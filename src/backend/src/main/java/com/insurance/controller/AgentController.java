@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.insurance.dto.AgentDto;
-import com.insurance.entity.Agent;
+import com.insurance.dto.AgentResponse;
+import com.insurance.dto.DtoMapper;
 import com.insurance.service.AgentService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,31 +37,31 @@ public class AgentController {
 
     @GetMapping
     @Operation(summary = "Get all agents")
-    public ResponseEntity<List<Agent>> getAllAgents() {
-        return ResponseEntity.ok(agentService.getAllAgents());
+    public ResponseEntity<List<AgentResponse>> getAllAgents() {
+        return ResponseEntity.ok(agentService.getAllAgents().stream().map(DtoMapper::toAgentResponse).toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Agent> getAgentById(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.getAgentById(id));
+    public ResponseEntity<AgentResponse> getAgentById(@PathVariable Long id) {
+        return ResponseEntity.ok(DtoMapper.toAgentResponse(agentService.getAgentById(id)));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Agent>> searchAgentsBySpecialization(@RequestParam(required = false) String specialization) {
-        return ResponseEntity.ok(agentService.searchAgentsBySpecialization(specialization));
+    public ResponseEntity<List<AgentResponse>> searchAgentsBySpecialization(@RequestParam(required = false) String specialization) {
+        return ResponseEntity.ok(agentService.searchAgentsBySpecialization(specialization).stream().map(DtoMapper::toAgentResponse).toList());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new agent")
-    public ResponseEntity<Agent> createAgent(@Valid @RequestBody AgentDto dto) {
-        return new ResponseEntity<>(agentService.createAgent(dto), HttpStatus.CREATED);
+    public ResponseEntity<AgentResponse> createAgent(@Valid @RequestBody AgentDto dto) {
+        return new ResponseEntity<>(DtoMapper.toAgentResponse(agentService.createAgent(dto)), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Agent> updateAgent(@PathVariable Long id, @Valid @RequestBody AgentDto dto) {
-        return ResponseEntity.ok(agentService.updateAgent(id, dto));
+    public ResponseEntity<AgentResponse> updateAgent(@PathVariable Long id, @Valid @RequestBody AgentDto dto) {
+        return ResponseEntity.ok(DtoMapper.toAgentResponse(agentService.updateAgent(id, dto)));
     }
 
     @DeleteMapping("/{id}")

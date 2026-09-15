@@ -49,8 +49,8 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Seeding demo data...");
 
         // Users
-        User admin = createUser("admin", "admin@srinsurance.com", "Admin@1234", "ADMIN");
-        User agentUser = createUser("agent1", "agent1@srinsurance.com", "Agent@1234", "AGENT");
+        createUser("admin", "admin@srinsurance.com", "Admin@1234", "ADMIN");
+        createUser("agent1", "agent1@srinsurance.com", "Agent@1234", "AGENT");
         createUser("surveyor1", "surveyor1@srinsurance.com", "Survey@1234", "SURVEYOR");
         createUser("claims1", "claims1@srinsurance.com", "Claims@1234", "CLAIMS_HANDLER");
         createUser("finance1", "finance1@srinsurance.com", "Finance@1234", "FINANCE_OFFICER");
@@ -86,7 +86,7 @@ public class DataSeeder implements CommandLineRunner {
         Customer c1 = createCustomer("Arjun Mehta", "arjun.mehta@email.com", "+919876543210", "12 Koramangala, Bengaluru");
         Customer c2 = createCustomer("Divya Krishnan", "divya.k@email.com", "+919876543211", "45 Indiranagar, Bengaluru");
         Customer c3 = createCustomer("Rohit Verma", "rohit.v@email.com", "+919876543212", "78 Whitefield, Bengaluru");
-        Customer c4 = createCustomer("Meena Iyer", "meena.i@email.com", "+919876543213", "23 Jayanagar, Bengaluru");
+        createCustomer("Meena Iyer", "meena.i@email.com", "+919876543213", "23 Jayanagar, Bengaluru");
 
         // Policies
         Policy p1 = createPolicy("POL-MOT-2024-000001", "Motor Insurance - Fortuner", "Motor",

@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.insurance.dto.DtoMapper;
 import com.insurance.dto.PaymentDto;
 import com.insurance.dto.PaymentResponse;
-import com.insurance.service.PaymentService;
 import com.insurance.service.CustomerAccessService;
+import com.insurance.service.PaymentService;
 import com.insurance.service.PolicyService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -90,9 +90,9 @@ public class PaymentController {
         Long customerId = customerAccessService.currentCustomerId(authentication);
         if (customerId != null) {
             if (dto.getPolicyId() != null) {
-                customerAccessService.assertCanAccess(authentication,
-                        policyService.getPolicyById(dto.getPolicyId()).getCustomer() == null ? null
-                                : policyService.getPolicyById(dto.getPolicyId()).getCustomer().getCustomerId());
+            var policy = policyService.getPolicyById(dto.getPolicyId());
+            customerAccessService.assertCanAccess(authentication,
+                policy.getCustomer() == null ? null : policy.getCustomer().getCustomerId());
             }
             dto.setCustomerId(customerId);
             dto.setPaymentStatus("Pending");

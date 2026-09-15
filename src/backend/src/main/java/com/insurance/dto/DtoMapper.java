@@ -3,6 +3,7 @@ package com.insurance.dto;
 import com.insurance.entity.Agent;
 import com.insurance.entity.Claim;
 import com.insurance.entity.Customer;
+import com.insurance.entity.Endorsement;
 import com.insurance.entity.Payment;
 import com.insurance.entity.Policy;
 import com.insurance.entity.Surveyor;
@@ -171,6 +172,26 @@ public final class DtoMapper {
                 .description(p.getDescription())
                 .customer(custSummary)
                 .policy(polSummary)
+                .build();
+    }
+
+    public static EndorsementResponse toEndorsementResponse(Endorsement e) {
+        if (e == null) return null;
+        return EndorsementResponse.builder()
+                .endorsementId(e.getEndorsementId())
+                .endorsementNumber(e.getEndorsementNumber())
+                .policyId(e.getPolicy() == null ? null : e.getPolicy().getPolicyId())
+                .policyNumber(e.getPolicy() == null ? null : e.getPolicy().getPolicyNumber())
+                .customerId(e.getCustomer() == null ? null : e.getCustomer().getCustomerId())
+                .endorsementType(e.getEndorsementType())
+                .description(e.getDescription())
+                .premiumAdjustment(e.getPremiumAdjustment())
+                .effectiveDate(e.getEffectiveDate())
+                .status(e.getStatus())
+                .approvedBy(e.getApprovedBy())
+                .createdAt(e.getCreatedAt())
+                .oldValue(e.getOldValue())
+                .newValue(e.getNewValue())
                 .build();
     }
 }

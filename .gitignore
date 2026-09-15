@@ -1,16 +1,30 @@
-node_modules/
-dist/
+# Environment / secrets
 .env
 .env.*
 !.env.example
 
-# Java / Maven
-**/target/
+# Frontend build
+node_modules/
+dist/
+src/frontend/dist/
+
+# Backend build
+src/backend/target/
+*.jar
+*.war
 
 # IDE
-.vscode/
 .idea/
 *.iml
+.vscode/
+.classpath
+.project
+.settings/
 
-# Local logs
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+logs/

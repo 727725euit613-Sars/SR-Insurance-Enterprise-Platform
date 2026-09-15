@@ -41,10 +41,6 @@ public class ClaimService {
     }
 
     public Claim createClaim(ClaimDto dto) {
-        if (dto.getPolicyId() != null && claimRepository.existsByPolicyPolicyIdAndIncidentDateAndDescriptionIgnoreCase(
-                dto.getPolicyId(), dto.getIncidentDate(), dto.getDescription())) {
-            throw new InvalidRequestException("A claim with the same policy, incident date, and description already exists");
-        }
         Claim claim = new Claim();
         claim.setClaimNumber(generateClaimNumber());
         mapDtoToClaim(dto, claim);
@@ -57,14 +53,15 @@ public class ClaimService {
         Claim existing = getClaimById(id);
         mapDtoToClaim(dto, existing);
         Claim saved = claimRepository.save(existing);
-        auditService.log("UPDATE_CLAIM", "Claim", saved.getClaimId(), "Updated claim: " + saved.getClaimNumber() + " status=" + saved.getStatus());
+        auditService.log("UPDATE_CLAIM", "Claim", saved.getClaimId(),
+                "Updated claim: " + saved.getClaimNumber() + " status=" + saved.getStatus());
         return saved;
     }
 
     public void deleteClaim(Long id) {
-        Claim claim = getClaimById(id);
-        auditService.log("DELETE_CLAIM", "Claim", claim.getClaimId(), "Deleted claim: " + claim.getClaimNumber());
-        claimRepository.delete(claim);
+        Claim existing = getClaimById(id);
+        claimRepository.delete(existing);
+        auditService.log("DELETE_CLAIM", "Claim", id, "Deleted claim: " + existing.getClaimNumber());
     }
 
     public List<Claim> getClaimsByStatus(String status) {

@@ -15,8 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.insurance.dto.DtoMapper;
 import com.insurance.dto.SurveyorDto;
-import com.insurance.entity.Surveyor;
+import com.insurance.dto.SurveyorResponse;
 import com.insurance.service.SurveyorService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,31 +37,31 @@ public class SurveyorController {
 
     @GetMapping
     @Operation(summary = "Get all surveyors")
-    public ResponseEntity<List<Surveyor>> getAllSurveyors() {
-        return ResponseEntity.ok(surveyorService.getAllSurveyors());
+    public ResponseEntity<List<SurveyorResponse>> getAllSurveyors() {
+        return ResponseEntity.ok(surveyorService.getAllSurveyors().stream().map(DtoMapper::toSurveyorResponse).toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Surveyor> getSurveyorById(@PathVariable Long id) {
-        return ResponseEntity.ok(surveyorService.getSurveyorById(id));
+    public ResponseEntity<SurveyorResponse> getSurveyorById(@PathVariable Long id) {
+        return ResponseEntity.ok(DtoMapper.toSurveyorResponse(surveyorService.getSurveyorById(id)));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Surveyor>> searchSurveyorsByDepartment(@RequestParam(required = false) String department) {
-        return ResponseEntity.ok(surveyorService.searchSurveyorsByDepartment(department));
+    public ResponseEntity<List<SurveyorResponse>> searchSurveyorsByDepartment(@RequestParam(required = false) String department) {
+        return ResponseEntity.ok(surveyorService.searchSurveyorsByDepartment(department).stream().map(DtoMapper::toSurveyorResponse).toList());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new surveyor")
-    public ResponseEntity<Surveyor> createSurveyor(@Valid @RequestBody SurveyorDto dto) {
-        return new ResponseEntity<>(surveyorService.createSurveyor(dto), HttpStatus.CREATED);
+    public ResponseEntity<SurveyorResponse> createSurveyor(@Valid @RequestBody SurveyorDto dto) {
+        return new ResponseEntity<>(DtoMapper.toSurveyorResponse(surveyorService.createSurveyor(dto)), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','SURVEYOR')")
-    public ResponseEntity<Surveyor> updateSurveyor(@PathVariable Long id, @Valid @RequestBody SurveyorDto dto) {
-        return ResponseEntity.ok(surveyorService.updateSurveyor(id, dto));
+    public ResponseEntity<SurveyorResponse> updateSurveyor(@PathVariable Long id, @Valid @RequestBody SurveyorDto dto) {
+        return ResponseEntity.ok(DtoMapper.toSurveyorResponse(surveyorService.updateSurveyor(id, dto)));
     }
 
     @DeleteMapping("/{id}")

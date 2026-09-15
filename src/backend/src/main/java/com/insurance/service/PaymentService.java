@@ -11,7 +11,6 @@ import com.insurance.entity.Customer;
 import com.insurance.entity.Payment;
 import com.insurance.entity.Policy;
 import com.insurance.exception.ResourceNotFoundException;
-import com.insurance.exception.InvalidRequestException;
 import com.insurance.repository.CustomerRepository;
 import com.insurance.repository.PaymentRepository;
 import com.insurance.repository.PolicyRepository;
@@ -41,7 +40,8 @@ public class PaymentService {
         payment.setTransactionId("TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         mapDtoToPayment(dto, payment);
         Payment saved = paymentRepository.save(payment);
-        auditService.log("PAYMENT_CREATED", "Payment", saved.getPaymentId(), "Processed payment: " + saved.getTransactionId() + " amount=" + saved.getAmount());
+        auditService.log("PAYMENT_CREATED", "Payment", saved.getPaymentId(),
+                "Payment created: " + saved.getTransactionId() + " amount=" + saved.getAmount());
         return saved;
     }
 
@@ -49,14 +49,13 @@ public class PaymentService {
         Payment existing = getPaymentById(id);
         mapDtoToPayment(dto, existing);
         Payment saved = paymentRepository.save(existing);
-        auditService.log("PAYMENT_UPDATED", "Payment", saved.getPaymentId(), "Updated payment: " + saved.getTransactionId());
+        auditService.log("PAYMENT_UPDATED", "Payment", saved.getPaymentId(),
+                "Payment updated: " + saved.getTransactionId() + " status=" + saved.getPaymentStatus());
         return saved;
     }
 
     public void deletePayment(Long id) {
-        Payment existing = getPaymentById(id);
-        auditService.log("PAYMENT_DELETED", "Payment", existing.getPaymentId(), "Deleted payment: " + existing.getTransactionId());
-        paymentRepository.delete(existing);
+        paymentRepository.delete(getPaymentById(id));
     }
 
     public List<Payment> getPaymentsByCustomer(Long customerId) {
@@ -83,15 +82,7 @@ public class PaymentService {
         if (dto.getPolicyId() != null) {
             Policy policy = policyRepository.findById(dto.getPolicyId())
                     .orElseThrow(() -> new ResourceNotFoundException("Policy not found: " + dto.getPolicyId()));
-            if (!"Active".equalsIgnoreCase(policy.getPolicyStatus())) {
-                throw new InvalidRequestException("Payments can only be made for active policies");
-            }
-            if (payment.getCustomer() != null && policy.getCustomer() != null
-                    && !payment.getCustomer().getCustomerId().equals(policy.getCustomer().getCustomerId())) {
-                throw new InvalidRequestException("Payment customer does not own the selected policy");
-            }
             payment.setPolicy(policy);
-            payment.setCustomer(policy.getCustomer());
         }
     }
 }
