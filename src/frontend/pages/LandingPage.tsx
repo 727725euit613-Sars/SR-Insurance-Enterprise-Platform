@@ -270,47 +270,6 @@ export const LandingPage = ({
           ))}
         </div>
       </section>
-
-      {/* Footer per Appendix I.5 */}
-      <footer className="border-t border-white/[0.06] bg-[#050914] py-12 px-6 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-extrabold text-white">SR Insurance Platform</span>
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Insurance Regulatory and Development Authority of India (IRDAI) Registered Insurer No. IRDAI/NL-GEN/2024/098.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-extrabold text-white uppercase tracking-wider mb-3">Regulatory Grievance</h4>
-            <p className="text-[11px] leading-relaxed">
-              Grievance Redressal Officer: <br />
-              grievance@srinsurance.com • 1800-200-8910<br />
-              IRDAI IGMS Portal: bimabharosa.irdai.gov.in
-            </p>
-          </div>
-          <div>
-            <h4 className="font-extrabold text-white uppercase tracking-wider mb-3">Data Localisation</h4>
-            <p className="text-[11px] leading-relaxed">
-              All policyholder and claims records are stored exclusively in AWS Asia Pacific (Mumbai) ap-south-1 in compliance with IRDAI Cybersecurity Guidelines.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-extrabold text-white uppercase tracking-wider mb-3">Quick Navigation</h4>
-            <div className="space-y-1 text-[11px]">
-              <div><button onClick={() => onLogin("CUSTOMER")} className="hover:text-blue-400">Customer Portal</button></div>
-              <div><button onClick={() => onLogin("AGENT")} className="hover:text-blue-400">Agent / POSP Desk</button></div>
-              <div><button onClick={() => onLogin("UNDERWRITER")} className="hover:text-blue-400">Underwriting Console</button></div>
-              <div><button onClick={() => onLogin("CLAIMS_HANDLER")} className="hover:text-blue-400">Claims Adjudication</button></div>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto pt-6 border-t border-white/[0.04] text-center text-[10px]">
-          © 2026 SR Insurance Company Limited. All Rights Reserved. IEEE Std 830-1998 Software Requirements Specification SRS-42 Implementation.
-        </div>
-      </footer>
     </div>
   );
 };

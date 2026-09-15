@@ -424,19 +424,19 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400">Sum Insured (IDV):</span>
-                <span className="text-xs font-bold text-white font-mono">₹{sumInsured.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-bold text-white font-mono">₹{(sumInsured ?? 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400">Net Premium (OD + TP + Add-ons):</span>
-                <span className="text-xs font-medium text-slate-200 font-mono">₹{netPremium.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-medium text-slate-200 font-mono">₹{(netPremium ?? 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400">Statutory GST (18%):</span>
-                <span className="text-xs font-medium text-slate-200 font-mono">₹{gstAmount.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-medium text-slate-200 font-mono">₹{(gstAmount ?? 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-slate-800/80">
                 <span className="text-sm font-bold text-white">Gross Payable Premium:</span>
-                <span className="text-lg font-bold text-emerald-400 font-mono">₹{grossPremium.toLocaleString('en-IN')}</span>
+                <span className="text-lg font-bold text-emerald-400 font-mono">₹{(grossPremium ?? 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
 

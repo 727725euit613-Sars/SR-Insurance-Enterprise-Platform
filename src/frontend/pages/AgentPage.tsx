@@ -44,7 +44,7 @@ export const AgentPage = ({
   const handleProcessPayout = () => {
     try {
       const txn = insuranceStore.requestAgentPayout(currentAgent.agentId, payoutAmount);
-      alert(`Commission payout of ₹${payoutAmount.toLocaleString()} disbursed to ${currentAgent.bankAccount}!\nTransaction Ref: ${txn}`);
+      alert(`Commission payout of ₹${(payoutAmount ?? 0).toLocaleString()} disbursed to ${currentAgent.bankAccount}!\nTransaction Ref: ${txn}`);
       setShowPayoutModal(false);
     } catch (err: any) {
       alert(err.message);
@@ -63,7 +63,7 @@ export const AgentPage = ({
         {[
           { label: "Active Leads", value: String(leads.length), icon: Users, color: "#2563EB", sub: "Pipeline CRM" },
           { label: "Policies Sold", value: String(currentAgent?.policiesSold || 61), icon: FileText, color: "#22C55E", sub: "YTD Gross Count" },
-          { label: "Commission Wallet", value: `₹${(currentAgent?.walletBalance || 184500).toLocaleString()}`, icon: DollarSign, color: "#F59E0B", sub: "Net Payable (After TDS)" },
+          { label: "Commission Wallet", value: `₹${(currentAgent?.walletBalance ?? 184500).toLocaleString()}`, icon: DollarSign, color: "#F59E0B", sub: "Net Payable (After TDS)" },
           { label: "Target Achievement", value: `${currentAgent?.renewalRatioPct || 94.5}%`, icon: Target, color: "#8B5CF6", sub: "Platinum Tier Status" },
         ].map(kpi => (
           <div key={kpi.label} className={`${cardCls} p-5`}>
@@ -123,7 +123,7 @@ export const AgentPage = ({
 
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right">
-                    <div className="text-xs font-black text-slate-900 dark:text-white">₹{lead.estimatedValue.toLocaleString()}</div>
+                    <div className="text-xs font-black text-slate-900 dark:text-white">₹{(lead.estimatedValue ?? 0).toLocaleString()}</div>
                     <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                       lead.stage === "Closed Won" ? "bg-emerald-500/15 text-emerald-400" :
                       lead.stage === "Negotiation" ? "bg-amber-500/15 text-amber-400" : "bg-blue-500/15 text-blue-400"
@@ -159,7 +159,7 @@ export const AgentPage = ({
 
             <div>
               <div className="text-2xl font-black text-slate-900 dark:text-white">
-                ₹{(currentAgent?.walletBalance || 184500).toLocaleString()}
+                ₹{(currentAgent?.walletBalance ?? 184500).toLocaleString()}
               </div>
               <p className="text-xs text-slate-400 mt-1">Bank: {currentAgent?.bankAccount}</p>
             </div>
@@ -279,7 +279,7 @@ export const AgentPage = ({
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
                 <div className="text-slate-400">Available Wallet Balance:</div>
-                <div className="text-xl font-black text-emerald-500">₹{(currentAgent?.walletBalance || 184500).toLocaleString()}</div>
+                <div className="text-xl font-black text-emerald-500">₹{(currentAgent?.walletBalance ?? 184500).toLocaleString()}</div>
                 <div className="text-[10px] text-slate-500 mt-1">Direct NEFT to {currentAgent?.bankAccount}</div>
               </div>
 

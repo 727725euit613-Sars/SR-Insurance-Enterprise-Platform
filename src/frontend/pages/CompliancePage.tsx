@@ -32,9 +32,10 @@ export const CompliancePage = ({
 
   const handleExportAnnualReturn = () => {
     const header = "Metric,Category,Statutory Value (INR / Ratio),IRDAI Benchmark,Compliance Status\n";
+    const totalGwpVal = policies.reduce((s, p) => s + (p.annualPremium ?? 0), 0);
     const rows = [
-      `"Gross Written Premium (GWP)","Total Direct Business","₹${policies.reduce((s, p) => s + p.annualPremium, 0).toLocaleString()}","N/A","COMPLIANT"`,
-      `"Net Written Premium (NWP)","After Reinsurance Cession","₹${Math.round(policies.reduce((s, p) => s + p.annualPremium, 0) * 0.79).toLocaleString()}","Min 50% Retained","COMPLIANT"`,
+      `"Gross Written Premium (GWP)","Total Direct Business","₹${totalGwpVal.toLocaleString()}","N/A","COMPLIANT"`,
+      `"Net Written Premium (NWP)","After Reinsurance Cession","₹${Math.round(totalGwpVal * 0.79).toLocaleString()}","Min 50% Retained","COMPLIANT"`,
       `"Incurred Claims Ratio (ICR)","Claims / Earned Premium","58.4%","Benchmark: < 75%","HEALTHY"`,
       `"FNOL Ack SLA (< 24h)","Statutory Turnaround","100% within 24 hours","100%","COMPLIANT"`,
       `"Grievance Resolution TAT","IGMS Redressal Rate","100% within 14 days","Min 95%","EXCEEDS SLA"`,

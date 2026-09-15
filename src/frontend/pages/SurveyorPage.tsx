@@ -47,7 +47,7 @@ export const SurveyorPage = ({
         {[
           { label: "Assigned Claims", value: String(assignedClaims.length), icon: FileCheck, color: "#2563EB" },
           { label: "Surveys Completed", value: String(currentSurveyor?.completedSurveys || 142), icon: CheckCircle, color: "#22C55E" },
-          { label: "Tariff Earnings", value: `₹${(currentSurveyor?.totalEarnings || 497000).toLocaleString()}`, icon: DollarSign, color: "#F59E0B" },
+          { label: "Tariff Earnings", value: `₹${(currentSurveyor?.totalEarnings ?? 497000).toLocaleString()}`, icon: DollarSign, color: "#F59E0B" },
           { label: "Surveyor Rating", value: `${currentSurveyor?.rating || 4.9} ★`, icon: Award, color: "#8B5CF6" },
         ].map(kpi => (
           <div key={kpi.label} className={`${cardCls} p-5`}>
@@ -101,7 +101,7 @@ export const SurveyorPage = ({
                 <div className="text-[11px] text-slate-400 flex flex-wrap gap-3 pt-1">
                   <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-rose-500" /> {c.incidentLocation}</span>
                   <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-blue-500" /> {c.incidentDate}</span>
-                  <span>• Est: <strong>₹{c.estimatedLoss.toLocaleString()}</strong></span>
+                  <span>• Est: <strong>₹{(c.estimatedLoss ?? 0).toLocaleString()}</strong></span>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex justify-between items-center">

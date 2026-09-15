@@ -216,12 +216,12 @@ export function generatePolicyScheduleHtml(policy: {
         <tr><th>Description</th><th>SAC Code</th><th class="text-right">Amount (₹)</th></tr>
       </thead>
       <tbody>
-        <tr><td>Basic Own Damage & Liability Cover</td><td>997132</td><td class="text-right">₹${base.toLocaleString()}</td></tr>
+        <tr><td>Basic Own Damage & Liability Cover</td><td>997132</td><td class="text-right">₹${(base ?? 0).toLocaleString()}</td></tr>
         <tr><td>Add-on Covers (Zero Dep, Engine Protect, RSA)</td><td>997132</td><td class="text-right">₹2,850</td></tr>
         <tr><td>No Claim Bonus (${ncb}%) Discount</td><td>997132</td><td class="text-right" style="color: #16a34a;">- ₹1,450</td></tr>
         <tr><td>Stamp Duty (Government of India)</td><td>997132</td><td class="text-right">₹100</td></tr>
-        <tr><td>Integrated GST (IGST @ 18.00%)</td><td>997132</td><td class="text-right">₹${gst.toLocaleString()}</td></tr>
-        <tr class="total-row"><td>TOTAL PREMIUM PAID (INR)</td><td></td><td class="text-right">₹${policy.premiumAmount.toLocaleString()}</td></tr>
+        <tr><td>Integrated GST (IGST @ 18.00%)</td><td>997132</td><td class="text-right">₹${(gst ?? 0).toLocaleString()}</td></tr>
+        <tr class="total-row"><td>TOTAL PREMIUM PAID (INR)</td><td></td><td class="text-right">₹${(policy.premiumAmount ?? 0).toLocaleString()}</td></tr>
       </tbody>
     </table>
 
@@ -289,14 +289,14 @@ export function generatePremiumReceiptHtml(payment: {
         <tr>
           <td>Insurance Premium Collection</td>
           <td>997132</td>
-          <td class="text-right">₹${net.toLocaleString()}</td>
-          <td class="text-right">₹${cgst.toLocaleString()}</td>
-          <td class="text-right">₹${sgst.toLocaleString()}</td>
-          <td class="text-right font-bold">₹${payment.amount.toLocaleString()}</td>
+          <td class="text-right">₹${(net ?? 0).toLocaleString()}</td>
+          <td class="text-right">₹${(cgst ?? 0).toLocaleString()}</td>
+          <td class="text-right">₹${(sgst ?? 0).toLocaleString()}</td>
+          <td class="text-right font-bold">₹${(payment.amount ?? 0).toLocaleString()}</td>
         </tr>
         <tr class="total-row">
           <td colspan="5">TOTAL AMOUNT RECEIVED (INR)</td>
-          <td class="text-right">₹${payment.amount.toLocaleString()}</td>
+          <td class="text-right">₹${(payment.amount ?? 0).toLocaleString()}</td>
         </tr>
       </tbody>
     </table>
@@ -350,7 +350,7 @@ export function generateClaimSettlementHtml(claim: {
     <div class="grid-2">
       <div class="field"><span class="field-label">Insured / Claimant Name</span><span class="field-val">${claim.customerName}</span></div>
       <div class="field"><span class="field-label">Date of Incident</span><span class="field-val">${claim.incidentDate}</span></div>
-      <div class="field"><span class="field-label">Claim Lodged Amount</span><span class="field-val">₹${claim.claimedAmount.toLocaleString()}</span></div>
+      <div class="field"><span class="field-label">Claim Lodged Amount</span><span class="field-val">₹${(claim.claimedAmount ?? 0).toLocaleString()}</span></div>
       <div class="field"><span class="field-label">Adjudication Date</span><span class="field-val">${new Date().toISOString().split("T")[0]}</span></div>
     </div>
 
@@ -360,10 +360,10 @@ export function generateClaimSettlementHtml(claim: {
         <tr><th>Assessment Line Item</th><th>Notes / Tariff Guideline</th><th class="text-right">Amount (₹)</th></tr>
       </thead>
       <tbody>
-        <tr><td>Assessed Loss by Empanelled Surveyor</td><td>As per surveyor inspection report</td><td class="text-right">₹${claim.claimedAmount.toLocaleString()}</td></tr>
-        <tr><td>Less: Compulsory Policy Deductible</td><td>Policy Terms & Conditions Clause 4.2</td><td class="text-right" style="color: #dc2626;">- ₹${claim.deductibles.toLocaleString()}</td></tr>
-        <tr><td>Less: Depreciation on Replaced Parts</td><td>IRDAI Motor Tariff Standard Depreciation</td><td class="text-right" style="color: #dc2626;">- ₹${claim.depreciation.toLocaleString()}</td></tr>
-        <tr class="total-row"><td>NET APPROVED SETTLEMENT AMOUNT</td><td>Payable via Razorpay Payouts (NEFT/IMPS)</td><td class="text-right">₹${claim.approvedAmount.toLocaleString()}</td></tr>
+        <tr><td>Assessed Loss by Empanelled Surveyor</td><td>As per surveyor inspection report</td><td class="text-right">₹${(claim.claimedAmount ?? 0).toLocaleString()}</td></tr>
+        <tr><td>Less: Compulsory Policy Deductible</td><td>Policy Terms & Conditions Clause 4.2</td><td class="text-right" style="color: #dc2626;">- ₹${(claim.deductibles ?? 0).toLocaleString()}</td></tr>
+        <tr><td>Less: Depreciation on Replaced Parts</td><td>IRDAI Motor Tariff Standard Depreciation</td><td class="text-right" style="color: #dc2626;">- ₹${(claim.depreciation ?? 0).toLocaleString()}</td></tr>
+        <tr class="total-row"><td>NET APPROVED SETTLEMENT AMOUNT</td><td>Payable via Razorpay Payouts (NEFT/IMPS)</td><td class="text-right">₹${(claim.approvedAmount ?? 0).toLocaleString()}</td></tr>
       </tbody>
     </table>
 

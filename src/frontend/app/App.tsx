@@ -24,11 +24,17 @@ import {
   type AuthResponse, type Policy, type Claim, type Payment,
   type Customer, type Agent, type Surveyor, type DashboardStats, type AuditLog
 } from "../services/api";
+import { CompliancePage } from "../pages/CompliancePage";
+import { ReinsurancePage } from "../pages/ReinsurancePage";
+import { QuotePage } from "../pages/QuotePage";
+import { MarketplacePage } from "../pages/MarketplacePage";
+import { ChatBot } from "../components/ChatBot";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Page =
   | "landing" | "login" | "register" | "forgot" | "reset"
-  | "dashboard" | "policies" | "claims" | "payments"
+  | "dashboard" | "marketplace" | "quote" | "policies" | "claims" | "payments"
+  | "reinsurance" | "compliance"
   | "analytics" | "admin" | "agent" | "surveyor" | "profile" | "audit";
 
 type Role = "ADMIN" | "AGENT" | "SURVEYOR" | "CUSTOMER";
@@ -229,12 +235,16 @@ const Shield3D = ({ size = 200 }: { size?: number }) => (
 function getNavGroups(role: Role) {
   const main = [
     { label: "Dashboard", page: "dashboard" as Page, Icon: LayoutDashboard },
+    { label: "Insurance Plans", page: "marketplace" as Page, Icon: Package },
+    { label: "Instant Quote", page: "quote" as Page, Icon: DollarSign },
     { label: "Policies", page: "policies" as Page, Icon: FileText },
-    { label: "Claims", page: "claims" as Page, Icon: AlertCircle },
-    { label: "Payments", page: "payments" as Page, Icon: CreditCard },
+    { label: "Claims Adjudication", page: "claims" as Page, Icon: AlertCircle },
+    { label: "Premium & Billing", page: "payments" as Page, Icon: CreditCard },
   ];
   const mgmt = [];
   if (role === "ADMIN" || role === "AGENT") {
+    mgmt.push({ label: "Reinsurance Desk", page: "reinsurance" as Page, Icon: Building });
+    mgmt.push({ label: "Compliance & IIB", page: "compliance" as Page, Icon: FileCheck });
     mgmt.push({ label: "Customers", page: "admin" as Page, Icon: Users });
     mgmt.push({ label: "Agents", page: "agent" as Page, Icon: UserCheck });
     mgmt.push({ label: "Surveyors", page: "surveyor" as Page, Icon: MapPin });
@@ -242,13 +252,15 @@ function getNavGroups(role: Role) {
   if (role === "SURVEYOR") {
     mgmt.push({ label: "Surveyor Portal", page: "surveyor" as Page, Icon: MapPin });
   }
-  const insights = [{ label: "Analytics", page: "analytics" as Page, Icon: BarChart2 }];
-  if (role === "ADMIN") insights.push({ label: "Audit Logs", page: "audit" as Page, Icon: FileCheck });
+  const insights = [
+    { label: "Analytics & KPI", page: "analytics" as Page, Icon: BarChart2 },
+  ];
+  if (role === "ADMIN") insights.push({ label: "Audit Logs", page: "audit" as Page, Icon: Activity });
   const account = [{ label: "Profile", page: "profile" as Page, Icon: Settings }];
   return [
     { title: "Main", items: main },
-    ...(mgmt.length ? [{ title: "Management", items: mgmt }] : []),
-    { title: "Insights", items: insights },
+    ...(mgmt.length ? [{ title: "Enterprise Mgmt", items: mgmt }] : []),
+    { title: "Statutory & Quality", items: insights },
     { title: "Account", items: account },
   ];
 }
@@ -308,19 +320,120 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, collapsed, setCollapsed, u
 };
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
-const TopBar = ({ title, subtitle, darkMode, setDarkMode }: { title: string; subtitle?: string; darkMode: boolean; setDarkMode: (v: boolean) => void }) => (
-  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.04] bg-white/70 dark:bg-[#0A0F1E]/70 backdrop-blur-xl sticky top-0 z-10">
-    <div>
-      <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">{title}</h1>
-      {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+const TopBar = ({
+  title,
+  subtitle,
+  darkMode,
+  setDarkMode,
+  onNavigate,
+  user
+}: {
+  title: string;
+  subtitle?: string;
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
+  onNavigate?: (p: Page) => void;
+  user?: AuthResponse;
+}) => {
+  const [selectedLob, setSelectedLob] = useState("All LOB");
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const notifications = [
+    { id: 1, text: "FNOL CLM-202401-002847 pending surveyor inspection", time: "10m ago" },
+    { id: 2, text: "Policy POL-MTR-202401-001892 renewal reminder dispatched", time: "1h ago" },
+    { id: 3, text: "Statutory IIB Monthly XML export ready for compliance", time: "3h ago" },
+  ];
+
+  return (
+    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.04] bg-white/70 dark:bg-[#0A0F1E]/70 backdrop-blur-xl sticky top-0 z-10 flex-wrap gap-3">
+      <div>
+        <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">{title}</h1>
+        {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+      </div>
+
+      <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Product line selector per Appendix I.2 */}
+        <select
+          value={selectedLob}
+          onChange={e => setSelectedLob(e.target.value)}
+          className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+        >
+          <option value="All LOB">All Lines of Business</option>
+          <option value="Motor">Motor (OD + TP)</option>
+          <option value="Health">Health &amp; Mediclaim</option>
+          <option value="Life">Life &amp; Term Cover</option>
+          <option value="Property">Property &amp; Fire</option>
+          <option value="Commercial">Commercial Floater</option>
+        </select>
+
+        {/* Claim TAT breach alert badge (Appendix I.2) */}
+        <button
+          onClick={() => onNavigate && onNavigate("claims")}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+          title="IRDAI Claim Decision TAT Monitor"
+        >
+          <AlertCircle className="w-3.5 h-3.5" />
+          <span>TAT: 1 Near Breach</span>
+        </button>
+
+        {/* Renewal due count badge */}
+        <button
+          onClick={() => onNavigate && onNavigate("policies")}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+          title="Policies Due for Renewal"
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>2 Renewals</span>
+        </button>
+
+        {/* Agent wallet balance if agent */}
+        {user?.role === "AGENT" && (
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <Banknote className="w-3.5 h-3.5" />
+            <span>Wallet: ₹42,500</span>
+          </div>
+        )}
+
+        {/* Notification Bell Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-white/[0.05] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors relative"
+            title="Notifications"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500"></span>
+          </button>
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-72 p-3 rounded-2xl border shadow-xl z-50 bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5 font-bold">
+                <span>Statutory Notifications</span>
+                <span className="text-[10px] text-blue-500 font-extrabold">3 New</span>
+              </div>
+              <div className="space-y-2">
+                {notifications.map(n => (
+                  <div key={n.id} className="p-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] space-y-1">
+                    <p className="text-slate-700 dark:text-slate-300 text-[11px] leading-snug">{n.text}</p>
+                    <span className="text-[10px] text-slate-400">{n.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Dark/Light mode toggle */}
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="p-2 rounded-xl bg-slate-100 dark:bg-white/[0.05] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+          title="Toggle Dark/Light Mode"
+        >
+          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+      </div>
     </div>
-    <div className="flex items-center gap-2.5">
-      <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-xl bg-slate-100 dark:bg-white/[0.05] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
-        {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 const cardCls = (dk: boolean) => `rounded-[20px] border ${dk ? "bg-slate-800/55 border-white/[0.07]" : "bg-white border-slate-100 shadow-sm"}`;
 
@@ -705,9 +818,9 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className={`text-xl font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>₹{p.premiumAmount?.toLocaleString()}</div>
+                    <div className={`text-xl font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>₹{(p.premiumAmount ?? 0).toLocaleString()}</div>
                     <div className="text-xs text-slate-500">Annual Premium</div>
-                    {p.coverageAmount && <div className="text-xs text-slate-500">Coverage: ₹{p.coverageAmount?.toLocaleString()}</div>}
+                    {p.coverageAmount && <div className="text-xs text-slate-500">Coverage: ₹{(p.coverageAmount ?? 0).toLocaleString()}</div>}
                   </div>
                   {canEdit && (
                     <div className="flex gap-2 flex-shrink-0">
@@ -837,13 +950,13 @@ const ClaimsPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setDar
                 </div>
                 <p className="text-sm text-slate-400 mb-2">{c.description}</p>
                 <div className="flex gap-4 text-xs text-slate-500 flex-wrap">
-                  <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />₹{c.claimAmount?.toLocaleString()}</span>
+                  <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />₹{(c.claimAmount ?? 0).toLocaleString()}</span>
                   {c.incidentDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{c.incidentDate}</span>}
                   {c.incidentLocation && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.incidentLocation}</span>}
                   {c.customer && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.customer.name}</span>}
                   {c.surveyor && <span className="flex items-center gap-1"><UserCheck className="w-3 h-3" />Surveyor: {c.surveyor.name}</span>}
                 </div>
-                {c.approvedAmount && <p className="text-xs text-green-400 mt-1 font-semibold">Approved: ₹{c.approvedAmount?.toLocaleString()}</p>}
+                {c.approvedAmount && <p className="text-xs text-green-400 mt-1 font-semibold">Approved: ₹{(c.approvedAmount ?? 0).toLocaleString()}</p>}
                 {c.assessmentNotes && <p className="text-xs text-slate-400 mt-1">Notes: {c.assessmentNotes}</p>}
               </div>
               {canUpdate && (
@@ -951,7 +1064,7 @@ const PaymentsPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
                     <tr key={p.paymentId} className={`border-b transition-colors ${dk ? "border-white/[0.03] hover:bg-white/[0.02]" : "border-slate-50 hover:bg-slate-50"}`}>
                       <td className="px-4 py-3 text-xs font-mono text-slate-400">{p.transactionId}</td>
                       <td className="px-4 py-3 text-sm text-slate-300 max-w-[160px] truncate">{p.description}</td>
-                      <td className={`px-4 py-3 text-sm font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>₹{p.amount?.toLocaleString()}</td>
+                      <td className={`px-4 py-3 text-sm font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>₹{(p.amount ?? 0).toLocaleString()}</td>
                       <td className="px-4 py-3 text-sm text-slate-400">{p.paymentMethod}</td>
                       <td className="px-4 py-3"><Badge label={p.paymentStatus} variant={statusVariant(p.paymentStatus)} /></td>
                       <td className="px-4 py-3 text-xs text-slate-500">{p.paymentDate}</td>
@@ -1301,7 +1414,7 @@ const SurveyorPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
                     <div className="text-xs text-slate-500 mt-0.5">{c.description}</div>
                     <div className="text-xs text-slate-500">Surveyor: {c.surveyor?.name}</div>
                   </div>
-                  <div className={`text-sm font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>₹{c.claimAmount?.toLocaleString()}</div>
+                  <div className={`text-sm font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>₹{(c.claimAmount ?? 0).toLocaleString()}</div>
                 </div>
               ))}
             </div>
@@ -1377,8 +1490,20 @@ export default function App() {
   const handleLogout = () => { auth.signOut(); setPage("landing"); };
 
   if (!auth.isAuthenticated) {
-    if (page === "landing") return <><LandingPage onLogin={() => { setAuthMode("login"); setPage("login"); }} onRegister={() => { setAuthMode("register"); setPage("register"); }} darkMode={darkMode} setDarkMode={setDarkMode} /><ToastContainer toasts={toasts} /></>;
-    return <><AuthPage mode={authMode} onSuccess={user => { if (user) { auth.adoptUser(user); handleAuthSuccess(user); } }} onBack={() => setPage("landing")} onSwitchMode={setAuthMode} /><ToastContainer toasts={toasts} /></>;
+    if (page === "landing") return (
+      <>
+        <LandingPage onLogin={() => { setAuthMode("login"); setPage("login"); }} onRegister={() => { setAuthMode("register"); setPage("register"); }} darkMode={darkMode} setDarkMode={setDarkMode} />
+        <ChatBot darkMode={darkMode} onNavigate={setPage} />
+        <ToastContainer toasts={toasts} />
+      </>
+    );
+    return (
+      <>
+        <AuthPage mode={authMode} onSuccess={user => { if (user) { auth.adoptUser(user); handleAuthSuccess(user); } }} onBack={() => setPage("landing")} onSwitchMode={setAuthMode} />
+        <ChatBot darkMode={darkMode} onNavigate={setPage} />
+        <ToastContainer toasts={toasts} />
+      </>
+    );
   }
 
   const user = auth.user!;
@@ -1386,6 +1511,10 @@ export default function App() {
   const renderPage = () => {
     const props = { darkMode, setDarkMode };
     switch (page) {
+      case "marketplace": return <MarketplacePage {...props} onSelectProductForQuote={() => setPage("quote")} />;
+      case "quote": return <QuotePage {...props} onProceedToIssuance={() => setPage("policies")} />;
+      case "reinsurance": return <ReinsurancePage {...props} />;
+      case "compliance": return <CompliancePage {...props} />;
       case "policies": return <PoliciesPage {...props} role={role} />;
       case "claims": return <ClaimsPage {...props} role={role} />;
       case "payments": return <PaymentsPage {...props} role={role} />;
@@ -1398,5 +1527,14 @@ export default function App() {
       default: return <DashboardPage {...props} role={role} />;
     }
   };
-  return <div className="flex min-h-screen bg-[#0A0F1E]"><Sidebar currentPage={page} onNavigate={setPage} onLogout={handleLogout} collapsed={collapsed} setCollapsed={setCollapsed} user={user} /><main className="flex-1 min-w-0 overflow-x-hidden">{renderPage()}</main><ToastContainer toasts={toasts} /></div>;
+  return (
+    <div className="flex min-h-screen bg-[#0A0F1E]">
+      <Sidebar currentPage={page} onNavigate={setPage} onLogout={handleLogout} collapsed={collapsed} setCollapsed={setCollapsed} user={user} />
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        {renderPage()}
+      </main>
+      <ChatBot darkMode={darkMode} onNavigate={setPage} />
+      <ToastContainer toasts={toasts} />
+    </div>
+  );
 }

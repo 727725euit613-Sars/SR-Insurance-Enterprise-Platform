@@ -1,6 +1,18 @@
 // ─── Insurance Platform Persistent Data Store ─────────────────────────────────
 // Implements full IEEE SRS-42 data structures, business logic, and dual-layer sync.
 
+import {
+  validateAgentAuthority,
+  validateActivePolicyForClaim,
+  validateClaimDuplicate,
+  validateFreeLookCancellation,
+  validateNcbSlab,
+  validateSurveyorLicense,
+  validateRiCession,
+  validateClaimPayee,
+  SRS_ERRORS
+} from "./srsValidator";
+
 export interface CustomerModel {
   customerId: number;
   id?: number | string;
@@ -451,8 +463,24 @@ class InsuranceStore {
     if (!Number.isFinite(payload.annualPremium) || payload.annualPremium <= 0) {
       throw new Error("Annual premium must be greater than zero");
     }
-    if (payload.ncbPct !== undefined && ![0, 20, 25, 35, 45, 50].includes(payload.ncbPct)) {
-      throw new Error("NCB must be one of 0, 20, 25, 35, 45, or 50 percent");
+    // Appendix C: Agent Authority Limit
+    if (payload.agentId) {
+      const agentCheck = validateAgentAuthority(payload.sumInsured);
+      if (!agentCheck.valid) {
+        throw new Error(agentCheck.error || SRS_ERRORS.AGENT_AUTHORITY_LIMIT);
+      }
+    }
+    // Appendix C: NCB Slab Validation
+    if (payload.ncbPct !== undefined) {
+      const ncbCheck = validateNcbSlab(payload.ncbPct);
+      if (!ncbCheck.valid) {
+        throw new Error(ncbCheck.error || SRS_ERRORS.NCB_SLAB_VALIDATION);
+      }
+    }
+    // Appendix C: RI Cession Completeness
+    const riCheck = validateRiCession(20);
+    if (!riCheck.valid) {
+      throw new Error(riCheck.error || SRS_ERRORS.RI_CESSION_COMPLETENESS);
     }
     const policies = this.getPolicies();
     const now = new Date();
@@ -645,10 +673,20 @@ class InsuranceStore {
     const pol = policies.find(p => p.policyId === payload.policyId);
     if (!pol) throw new Error("Policy not found");
 
-    // Duplicate Check: same policy & incident date
-    const duplicate = claims.find(c => c.policyId === payload.policyId && c.incidentDate === payload.incidentDate && c.status !== "Rejected");
-    if (duplicate) {
-      throw new Error(`Duplicate Claim Alert: A claim (${duplicate.claimNumber}) is already registered for this policy on ${payload.incidentDate}`);
+    // Appendix C: Active Policy & Lapsed Policy Grace Check
+    const activeCheck = validateActivePolicyForClaim(pol, payload.incidentDate);
+    if (!activeCheck.valid) {
+      throw new Error(activeCheck.error || SRS_ERRORS.ACTIVE_POLICY_CLAIM);
+    }
+
+    // Appendix C: Duplicate Claim Check
+    const duplicateCheck = validateClaimDuplicate(claims, {
+      policyId: payload.policyId,
+      incidentDate: payload.incidentDate,
+      lossType: payload.lossType,
+    });
+    if (!duplicateCheck.valid) {
+      throw new Error(duplicateCheck.error || SRS_ERRORS.CLAIM_DUPLICATE);
     }
 
     const now = new Date();
@@ -759,10 +797,40 @@ class InsuranceStore {
     this.logAudit(`CLAIM_${action.toUpperCase()}D`, "CLAIM", claim.claimNumber, `${action}d claim for ₹${claim.approvedAmount}`);
   }
 
-  disburseClaimPayout(claimId: number): string {
+  assignSurveyorToClaim(claimId: number, surveyorId: number) {
+    const surveyors = this.getSurveyors();
+    const surveyor = surveyors.find(s => s.surveyorId === surveyorId);
+    if (!surveyor) throw new Error("Surveyor not found");
+
+    // Appendix C: Surveyor License
+    const licCheck = validateSurveyorLicense(surveyor.licenseExpiry || "2024-01-01");
+    if (!licCheck.valid) {
+      throw new Error(licCheck.error || SRS_ERRORS.SURVEYOR_LICENSE);
+    }
+
+    const claims = this.getClaims();
+    const claim = claims.find(c => c.claimId === claimId);
+    if (!claim) throw new Error("Claim not found");
+
+    claim.surveyorId = surveyor.surveyorId;
+    claim.surveyorName = surveyor.name;
+    claim.status = "Surveyor Assigned";
+    surveyor.activeAssignments += 1;
+    this.set("surveyors", surveyors);
+    this.set("claims", claims);
+    this.logAudit("SURVEYOR_ASSIGNED", "CLAIM", claim.claimNumber, `Assigned surveyor ${surveyor.name}`);
+  }
+
+  disburseClaimPayout(claimId: number, payeeType: "CUSTOMER" | "GARAGE" | "HOSPITAL" | "THIRD_PARTY_UNREGISTERED" = "CUSTOMER"): string {
     const claims = this.getClaims();
     const claim = claims.find(c => c.claimId === claimId);
     if (!claim || claim.status !== "Approved") throw new Error("Claim is not in Approved state");
+
+    // Appendix C: Payment to Customer Only
+    const payeeCheck = validateClaimPayee(payeeType, true);
+    if (!payeeCheck.valid) {
+      throw new Error(payeeCheck.error || SRS_ERRORS.PAYMENT_CUSTOMER_ONLY);
+    }
 
     const payoutTxnId = `PAYOUT_RZP_${Date.now()}`;
     claim.status = "Settled";
@@ -772,6 +840,26 @@ class InsuranceStore {
 
     this.logAudit("CLAIM_SETTLED_PAYOUT", "CLAIM", claim.claimNumber, `Disbursed settlement payout of ₹${claim.approvedAmount} via Razorpay (${payoutTxnId})`);
     return payoutTxnId;
+  }
+
+  cancelPolicy(policyId: number, isFreeLook = true): { refundAmount: number; status: string } {
+    const policies = this.getPolicies();
+    const pol = policies.find(p => p.policyId === policyId);
+    if (!pol) throw new Error("Policy not found");
+
+    // Appendix C: Free-Look Cancellation
+    if (isFreeLook) {
+      const freeLookCheck = validateFreeLookCancellation(pol.startDate);
+      if (!freeLookCheck.valid) {
+        throw new Error(freeLookCheck.error || SRS_ERRORS.FREE_LOOK_CANCELLATION);
+      }
+    }
+
+    pol.status = "Cancelled";
+    this.set("policies", policies);
+    const refundAmount = isFreeLook ? Math.round(pol.annualPremium * 0.98) : Math.round(pol.annualPremium * 0.6);
+    this.logAudit("POLICY_CANCELLED", "POLICY", pol.policyNumber, `Policy cancelled (${isFreeLook ? "Free-Look Refund" : "Short-rate"}: ₹${refundAmount})`);
+    return { refundAmount, status: "Cancelled" };
   }
 
   recordPayment(payload: {
@@ -1026,6 +1114,161 @@ class InsuranceStore {
     this.set("payments", payments);
     this.logAudit("PREMIUM_PAYMENT", "PAYMENT", receiptNumber, `Recorded payment ₹${amount}`);
     return newPayment;
+  }
+
+  addCustomer(customer: Partial<CustomerModel>): CustomerModel {
+    const customers = this.getCustomers();
+    const newCustomer: CustomerModel = {
+      customerId: customers.length > 0 ? Math.max(...customers.map(c => c.customerId)) + 1 : 1,
+      name: customer.name || "New Customer",
+      email: customer.email || "customer@example.com",
+      mobile: customer.mobile || customer.phone || "+91 98765 00000",
+      phone: customer.phone || customer.mobile || "+91 98765 00000",
+      address: customer.address || "India",
+      panNumber: customer.panNumber || "ABCDE1234F",
+      aadhaarLastFour: customer.aadhaarLastFour || "1234",
+      ekycStatus: customer.ekycStatus || "VERIFIED",
+      riskProfile: customer.riskProfile || "Medium",
+      creditScore: customer.creditScore || 750,
+      policiesCount: 0,
+      activeClaimsCount: 0,
+    };
+    customers.unshift(newCustomer);
+    this.set("customers", customers);
+    this.logAudit("CUSTOMER_CREATED", "CUSTOMER", String(newCustomer.customerId), `Created customer ${newCustomer.name}`);
+    return newCustomer;
+  }
+
+  updateCustomer(customerId: number | string, updates: Partial<CustomerModel>): CustomerModel {
+    const customers = this.getCustomers();
+    const c = customers.find(item => String(item.customerId) === String(customerId));
+    if (!c) throw new Error("Customer not found");
+    if (updates.name) c.name = updates.name;
+    if (updates.email) c.email = updates.email;
+    if (updates.phone || updates.mobile) {
+      c.phone = updates.phone || updates.mobile!;
+      c.mobile = c.phone;
+    }
+    if (updates.address) c.address = updates.address;
+    Object.assign(c, updates);
+    this.set("customers", customers);
+    this.logAudit("CUSTOMER_UPDATED", "CUSTOMER", String(customerId), `Updated customer ${c.name}`);
+    return c;
+  }
+
+  deleteCustomer(customerId: number | string): boolean {
+    const customers = this.getCustomers().filter(c => String(c.customerId) !== String(customerId));
+    this.set("customers", customers);
+    this.logAudit("CUSTOMER_DELETED", "CUSTOMER", String(customerId), `Deleted customer ID ${customerId}`);
+    return true;
+  }
+
+  addAgent(agent: Partial<AgentModel>): AgentModel {
+    const agents = this.getAgents();
+    const newAgent: AgentModel = {
+      agentId: agents.length > 0 ? Math.max(...agents.map(a => a.agentId)) + 1 : 1,
+      agentCode: agent.agentCode || `AGT-${1000 + agents.length + 1}`,
+      name: agent.name || "New Agent",
+      irdaiLicenseNo: agent.irdaiLicenseNo || "IRDAI-POSP-" + Math.floor(10000 + Math.random() * 90000),
+      licenseExpiry: agent.licenseExpiry || "2027-12-31",
+      tier: (agent.tier as any) || "Gold",
+      phone: agent.phone || "+91 98000 00000",
+      email: agent.email || "agent@srinsurance.com",
+      bankAccount: agent.bankAccount || "XXXX XXXX 1234 (HDFC Bank)",
+      ifsc: agent.ifsc || "HDFC0001234",
+      commissionRatePct: agent.commissionRatePct || 15.0,
+      walletBalance: agent.walletBalance || 0,
+      totalGwp: agent.totalGwp || 0,
+      policiesSold: agent.policiesSold || 0,
+      renewalRatioPct: agent.renewalRatioPct || 90.0,
+      tdsDeductedTotal: 0,
+      leadsCount: 0
+    };
+    agents.unshift(newAgent);
+    this.set("agents", agents);
+    this.logAudit("AGENT_CREATED", "AGENT", newAgent.agentCode, `Created agent ${newAgent.name}`);
+    return newAgent;
+  }
+
+  updateAgent(agentId: number | string, updates: Partial<AgentModel>): AgentModel {
+    const agents = this.getAgents();
+    const a = agents.find(item => String(item.agentId) === String(agentId));
+    if (!a) throw new Error("Agent not found");
+    Object.assign(a, updates);
+    this.set("agents", agents);
+    this.logAudit("AGENT_UPDATED", "AGENT", a.agentCode, `Updated agent ${a.name}`);
+    return a;
+  }
+
+  deleteAgent(agentId: number | string): boolean {
+    const agents = this.getAgents().filter(a => String(a.agentId) !== String(agentId));
+    this.set("agents", agents);
+    this.logAudit("AGENT_DELETED", "AGENT", String(agentId), `Deleted agent ID ${agentId}`);
+    return true;
+  }
+
+  addSurveyor(surveyor: Partial<SurveyorModel>): SurveyorModel {
+    const surveyors = this.getSurveyors();
+    const newSurveyor: SurveyorModel = {
+      surveyorId: surveyors.length > 0 ? Math.max(...surveyors.map(s => s.surveyorId)) + 1 : 1,
+      name: surveyor.name || "New Surveyor",
+      irdaiLicenseNo: surveyor.irdaiLicenseNo || "SLA-IRDAI-" + Math.floor(10000 + Math.random() * 90000),
+      licenseExpiry: surveyor.licenseExpiry || "2027-12-31",
+      specialization: surveyor.specialization || "General",
+      district: surveyor.district || "Bengaluru",
+      state: surveyor.state || "Karnataka",
+      contactMobile: surveyor.contactMobile || surveyor.phone || "+91 98000 00000",
+      email: surveyor.email || "surveyor@surveyors.in",
+      isActive: true,
+      activeAssignments: 0,
+      completedSurveys: 0,
+      rating: 4.8,
+      totalEarnings: 0
+    };
+    surveyors.unshift(newSurveyor);
+    this.set("surveyors", surveyors);
+    this.logAudit("SURVEYOR_CREATED", "SURVEYOR", String(newSurveyor.surveyorId), `Created surveyor ${newSurveyor.name}`);
+    return newSurveyor;
+  }
+
+  updateSurveyor(surveyorId: number | string, updates: Partial<SurveyorModel> & { phone?: string; department?: string }): SurveyorModel {
+    const surveyors = this.getSurveyors();
+    const s = surveyors.find(item => String(item.surveyorId) === String(surveyorId));
+    if (!s) throw new Error("Surveyor not found");
+    if (updates.phone) s.contactMobile = updates.phone;
+    if (updates.department) s.district = updates.department;
+    Object.assign(s, updates);
+    this.set("surveyors", surveyors);
+    this.logAudit("SURVEYOR_UPDATED", "SURVEYOR", String(surveyorId), `Updated surveyor ${s.name}`);
+    return s;
+  }
+
+  deleteSurveyor(surveyorId: number | string): boolean {
+    const surveyors = this.getSurveyors().filter(s => String(s.surveyorId) !== String(surveyorId));
+    this.set("surveyors", surveyors);
+    this.logAudit("SURVEYOR_DELETED", "SURVEYOR", String(surveyorId), `Deleted surveyor ID ${surveyorId}`);
+    return true;
+  }
+
+  updatePayment(paymentId: number | string, updates: Partial<PaymentModel>): PaymentModel {
+    const payments = this.getPayments();
+    const p = payments.find(item => String(item.paymentId) === String(paymentId));
+    if (!p) throw new Error("Payment not found");
+    Object.assign(p, updates);
+    this.set("payments", payments);
+    this.logAudit("PAYMENT_UPDATED", "PAYMENT", p.receiptNumber, `Updated payment ${paymentId}`);
+    return p;
+  }
+
+  rejectEndorsement(endorsementId: number | string, reason = "Rejected by Underwriting"): EndorsementModel {
+    const endorsements = this.getEndorsements();
+    const e = endorsements.find(item => String(item.endorsementId) === String(endorsementId) || item.endorsementNumber === endorsementId);
+    if (!e) throw new Error("Endorsement not found");
+    e.status = "Rejected";
+    e.approvedBy = reason;
+    this.set("endorsements", endorsements);
+    this.logAudit("ENDORSEMENT_REJECTED", "ENDORSEMENT", e.endorsementNumber, `Rejected endorsement: ${reason}`);
+    return e;
   }
 
   deletePolicy(policyId: number | string) {

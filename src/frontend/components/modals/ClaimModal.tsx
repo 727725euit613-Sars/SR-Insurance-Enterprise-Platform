@@ -278,7 +278,7 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400">Estimated Amount:</span>
-                <span className="text-xs font-bold text-white font-mono">₹{estimatedAmount.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-bold text-white font-mono">₹{(estimatedAmount ?? 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
 

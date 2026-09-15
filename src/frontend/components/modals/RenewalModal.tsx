@@ -83,7 +83,7 @@ export const RenewalModal: React.FC<RenewalModalProps> = ({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">Sum Insured (IDV):</span>
-              <span className="font-mono font-bold text-white">₹{policy.sumInsured.toLocaleString('en-IN')}</span>
+              <span className="font-mono font-bold text-white">₹{(policy?.sumInsured ?? 0).toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">NCB Progression:</span>
@@ -93,15 +93,15 @@ export const RenewalModal: React.FC<RenewalModalProps> = ({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">Renewal Net Premium:</span>
-              <span className="font-mono text-slate-200">₹{renewedNet.toLocaleString('en-IN')}</span>
+              <span className="font-mono text-slate-200">₹{(renewedNet ?? 0).toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400">Statutory GST (18%):</span>
-              <span className="font-mono text-slate-200">₹{renewedGst.toLocaleString('en-IN')}</span>
+              <span className="font-mono text-slate-200">₹{(renewedGst ?? 0).toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-slate-800">
               <span className="text-sm font-bold text-white">Renewal Payable:</span>
-              <span className="text-lg font-bold text-emerald-400 font-mono">₹{renewedGross.toLocaleString('en-IN')}</span>
+              <span className="text-lg font-bold text-emerald-400 font-mono">₹{(renewedGross ?? 0).toLocaleString('en-IN')}</span>
             </div>
           </div>
 

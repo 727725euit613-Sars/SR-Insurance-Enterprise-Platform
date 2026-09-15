@@ -117,7 +117,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 mb-5 flex justify-between items-center">
               <div>
                 <span className="text-xs text-slate-400 block">Total Premium Payable (incl. 18% GST)</span>
-                <span className="text-2xl font-bold text-white font-mono">₹{payableAmount.toLocaleString('en-IN')}</span>
+                <span className="text-2xl font-bold text-white font-mono">₹{(payableAmount ?? 0).toLocaleString('en-IN')}</span>
               </div>
               <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                 Live Gateway
@@ -240,7 +240,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Pay ₹{payableAmount.toLocaleString('en-IN')} Securely</span>
+                  <span>Pay ₹{(payableAmount ?? 0).toLocaleString('en-IN')} Securely</span>
                 </>
               )}
             </button>
@@ -264,7 +264,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Amount Paid:</span>
-                <span className="font-mono font-bold text-emerald-400">₹{completedPayment.amount.toLocaleString('en-IN')}</span>
+                <span className="font-mono font-bold text-emerald-400">₹{(completedPayment.amount ?? 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Payment Mode:</span>

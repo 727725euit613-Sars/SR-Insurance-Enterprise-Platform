@@ -231,8 +231,8 @@ export const PoliciesPage = ({
                 {/* Right financial & actions */}
                 <div className="flex items-center gap-6 flex-shrink-0">
                   <div className="text-right">
-                    <div className="text-xl font-black text-slate-900 dark:text-white">₹{pol.annualPremium.toLocaleString()}</div>
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Sum Insured: ₹{(pol.sumInsured / 100000).toFixed(0)}L</div>
+                    <div className="text-xl font-black text-slate-900 dark:text-white">₹{(pol.annualPremium ?? 0).toLocaleString()}</div>
+                    <div className="text-[10px] text-slate-400 uppercase font-bold">Sum Insured: ₹{((pol.sumInsured ?? 0) / 100000).toFixed(0)}L</div>
                   </div>
 
                   <div className="flex items-center gap-2">

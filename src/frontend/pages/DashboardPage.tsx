@@ -172,7 +172,7 @@ export const DashboardPage = ({
           },
           {
             title: role === "AGENT" ? "Commission Wallet" : "Total Premium Collected",
-            value: role === "AGENT" ? `₹${(currentAgent?.walletBalance || 184500).toLocaleString()}` : `₹${(stats?.totalPremiumCollected || 111500).toLocaleString()}`,
+            value: role === "AGENT" ? `₹${(currentAgent?.walletBalance ?? 184500).toLocaleString()}` : `₹${(stats?.totalPremiumCollected ?? 111500).toLocaleString()}`,
             sub: role === "AGENT" ? "Available for payout" : "Gross Written Premium",
             icon: DollarSign,
             color: "#22C55E",
@@ -180,7 +180,7 @@ export const DashboardPage = ({
           },
           {
             title: "Active Claims (FNOL)",
-            value: String(stats?.pendingClaims || claims.filter(c => c.status !== "Settled" && c.status !== "Rejected").length),
+            value: String(stats?.pendingClaims ?? claims.filter(c => c.status !== "Settled" && c.status !== "Rejected").length),
             sub: "100% within IRDAI SLA",
             icon: AlertCircle,
             color: "#F59E0B",
@@ -188,7 +188,7 @@ export const DashboardPage = ({
           },
           {
             title: "Payments Settled",
-            value: `₹${(stats?.totalPaymentsReceived || 107500).toLocaleString()}`,
+            value: `₹${(stats?.totalPaymentsReceived ?? 107500).toLocaleString()}`,
             sub: `${payments.length} successful transactions`,
             icon: CreditCard,
             color: "#8B5CF6",
@@ -309,7 +309,7 @@ export const DashboardPage = ({
                 </div>
                 <div className="text-[11px] text-slate-400 line-clamp-1">{c.description}</div>
                 <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold pt-1 border-t border-slate-100 dark:border-white/5">
-                  <span>Assessed: ₹{c.estimatedLoss.toLocaleString()}</span>
+                  <span>Assessed: ₹{((c.estimatedLoss ?? c.approvedAmount) ?? 0).toLocaleString()}</span>
                   <span>Surveyor: {c.surveyorName || "Assigned"}</span>
                 </div>
               </div>

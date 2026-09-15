@@ -74,17 +74,17 @@ export const QuotePage = ({
         <hr style="margin: 15px 0; border: 1px solid #e2e8f0;" />
         <p><strong>Insured:</strong> ${customerName} (${customerPhone})</p>
         <p><strong>Product Line:</strong> ${selectedType} Insurance — ${selectedPlanTier} Plan</p>
-        <p><strong>Sum Insured / IDV:</strong> ₹${sumInsured.toLocaleString()}</p>
+        <p><strong>Sum Insured / IDV:</strong> ₹${(sumInsured ?? 0).toLocaleString()}</p>
         <p><strong>No Claim Bonus Applied:</strong> ${ncb}%</p>
         <p><strong>Add-on Covers:</strong> ${selectedAddons.join(", ") || "None"}</p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
           <tr style="background: #f1f5f9;"><th style="padding: 8px; text-align: left;">Line Item</th><th style="padding: 8px; text-align: right;">Amount (₹)</th></tr>
-          <tr><td style="padding: 8px;">Base Premium</td><td style="padding: 8px; text-align: right;">₹${Math.round(rawBasePremium).toLocaleString()}</td></tr>
-          <tr><td style="padding: 8px; color: green;">NCB (${ncb}%) Discount</td><td style="padding: 8px; text-align: right; color: green;">- ₹${ncbDiscount.toLocaleString()}</td></tr>
-          <tr><td style="padding: 8px;">Add-on Covers</td><td style="padding: 8px; text-align: right;">₹${addonCost.toLocaleString()}</td></tr>
-          <tr><td style="padding: 8px;">GST @ 18.00%</td><td style="padding: 8px; text-align: right;">₹${gstAmount.toLocaleString()}</td></tr>
+          <tr><td style="padding: 8px;">Base Premium</td><td style="padding: 8px; text-align: right;">₹${Math.round(rawBasePremium ?? 0).toLocaleString()}</td></tr>
+          <tr><td style="padding: 8px; color: green;">NCB (${ncb}%) Discount</td><td style="padding: 8px; text-align: right; color: green;">- ₹${(ncbDiscount ?? 0).toLocaleString()}</td></tr>
+          <tr><td style="padding: 8px;">Add-on Covers</td><td style="padding: 8px; text-align: right;">₹${(addonCost ?? 0).toLocaleString()}</td></tr>
+          <tr><td style="padding: 8px;">GST @ 18.00%</td><td style="padding: 8px; text-align: right;">₹${(gstAmount ?? 0).toLocaleString()}</td></tr>
           <tr><td style="padding: 8px;">Stamp Duty</td><td style="padding: 8px; text-align: right;">₹${stampDuty}</td></tr>
-          <tr style="background: #dbeafe; font-weight: bold;"><td style="padding: 8px;">TOTAL ESTIMATED ANNUAL PREMIUM</td><td style="padding: 8px; text-align: right;">₹${finalAnnualPremium.toLocaleString()}</td></tr>
+          <tr style="background: #dbeafe; font-weight: bold;"><td style="padding: 8px;">TOTAL ESTIMATED ANNUAL PREMIUM</td><td style="padding: 8px; text-align: right;">₹${(finalAnnualPremium ?? 0).toLocaleString()}</td></tr>
         </table>
       </div>
     `;
@@ -195,7 +195,7 @@ export const QuotePage = ({
             </div>
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400">Live Computed Premium</span>
-              <div className="text-2xl font-black text-blue-500">₹{finalAnnualPremium.toLocaleString()}</div>
+              <div className="text-2xl font-black text-blue-500">₹{(finalAnnualPremium ?? 0).toLocaleString()}</div>
             </div>
           </div>
 
@@ -310,7 +310,7 @@ export const QuotePage = ({
                   )}
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{plan.tier} Plan</h3>
-                    <div className="text-2xl font-black text-blue-500 mt-2">₹{pCost.toLocaleString()}</div>
+                    <div className="text-2xl font-black text-blue-500 mt-2">₹{(pCost ?? 0).toLocaleString()}</div>
                     <div className="text-[10px] text-slate-400">per annum incl. 18% GST</div>
 
                     <div className="space-y-1.5 mt-4 pt-4 border-t border-slate-100 dark:border-white/5">

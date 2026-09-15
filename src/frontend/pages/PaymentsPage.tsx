@@ -66,7 +66,8 @@ export const PaymentsPage = ({
   };
 
   const handleFreeLookCancellation = (payment: PaymentModel) => {
-    if (window.confirm(`Initiate 15-Day Free-Look Policy Cancellation?\n\nProrated refund of ₹${(payment.amount - 100).toLocaleString()} (minus ₹100 stamp duty) will be disbursed to your account.`)) {
+    const refundAmt = Math.max(0, (payment.amount || 0) - 100);
+    if (window.confirm(`Initiate 15-Day Free-Look Policy Cancellation?\n\nProrated refund of ₹${refundAmt.toLocaleString()} (minus ₹100 stamp duty) will be disbursed to your account.`)) {
       payment.paymentStatus = "Refunded";
       const pol = policies.find(p => p.policyNumber === payment.policyNumber);
       if (pol) pol.status = "Cancelled";
@@ -93,7 +94,7 @@ export const PaymentsPage = ({
               <span>Premium Outstanding</span>
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              ₹{activeDuePolicy ? activeDuePolicy.annualPremium.toLocaleString() : "12,000"}
+              ₹{(activeDuePolicy?.annualPremium ?? 12000).toLocaleString()}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {activeDuePolicy ? `${activeDuePolicy.productName} • Due ${activeDuePolicy.endDate}` : "Home Shield Plus"}
@@ -110,7 +111,7 @@ export const PaymentsPage = ({
             >
               {policies.map(p => (
                 <option key={p.policyId} value={p.policyId}>
-                  {p.policyNumber} — {p.productName} (₹{p.annualPremium.toLocaleString()})
+                  {p.policyNumber} — {p.productName} (₹{(p.annualPremium ?? 0).toLocaleString()})
                 </option>
               ))}
             </select>
@@ -148,7 +149,7 @@ export const PaymentsPage = ({
             onClick={handlePayNow}
             className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-extrabold text-xs shadow-xl shadow-blue-600/30 transition-all hover:scale-105 flex items-center justify-center gap-2"
           >
-            Proceed to Razorpay → ₹{activeDuePolicy?.annualPremium.toLocaleString() || "12,000"}
+            Proceed to Razorpay → ₹{(activeDuePolicy?.annualPremium ?? 12000).toLocaleString()}
           </button>
 
           <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 font-semibold pt-1">
@@ -203,7 +204,7 @@ export const PaymentsPage = ({
                 <div className="flex items-center gap-4 flex-shrink-0">
                   <div className="text-right">
                     <div className={`text-base font-black ${txn.paymentStatus === "Refunded" ? "text-blue-400" : "text-slate-900 dark:text-white"}`}>
-                      {txn.paymentStatus === "Refunded" ? "+" : ""}₹{txn.amount.toLocaleString()}
+                      {txn.paymentStatus === "Refunded" ? "+" : ""}₹{(txn.amount ?? 0).toLocaleString()}
                     </div>
                     <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                       txn.paymentStatus === "Success" ? "bg-emerald-500/15 text-emerald-400" : "bg-blue-500/15 text-blue-400"

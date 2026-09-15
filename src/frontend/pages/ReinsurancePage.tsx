@@ -62,16 +62,20 @@ export const ReinsurancePage = ({
             </tr>
           </thead>
           <tbody>
-            ${policies.map(p => `
+            ${policies.map(p => {
+              const annPrem = p.annualPremium ?? 0;
+              const ceded = Math.round(annPrem * ((p.riCededPct ?? 0) / 100));
+              const retained = Math.round(annPrem * ((100 - (p.riCededPct ?? 0)) / 100));
+              return `
               <tr>
                 <td style="padding: 6px; border: 1px solid #E2E8F0;">${p.policyNumber}</td>
                 <td style="padding: 6px; border: 1px solid #E2E8F0;">${p.policyType}</td>
-                <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">₹${p.annualPremium.toLocaleString()}</td>
+                <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">₹${annPrem.toLocaleString()}</td>
                 <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">${p.riCededPct}%</td>
-                <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">₹${Math.round(p.annualPremium * (p.riCededPct/100)).toLocaleString()}</td>
-                <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">₹${Math.round(p.annualPremium * ((100-p.riCededPct)/100)).toLocaleString()}</td>
+                <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">₹${ceded.toLocaleString()}</td>
+                <td style="padding: 6px; border: 1px solid #E2E8F0; text-align: right;">₹${retained.toLocaleString()}</td>
               </tr>
-            `).join("")}
+            `;}).join("")}
           </tbody>
         </table>
         <div style="margin-top: 25px; text-align: right; font-weight: bold; font-size: 11px;">
@@ -94,9 +98,9 @@ export const ReinsurancePage = ({
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Gross Written Premium (GWP)", value: `₹${totalGwp.toLocaleString()}`, color: "#2563EB", sub: "100% Direct Risk" },
-          { label: "Total Ceded Premium", value: `₹${totalCeded.toLocaleString()}`, color: "#F59E0B", sub: "21.4% Treaty Cession" },
-          { label: "Net Written Premium (NWP)", value: `₹${netWrittenPremium.toLocaleString()}`, color: "#22C55E", sub: "Retained Balance" },
+          { label: "Gross Written Premium (GWP)", value: `₹${(totalGwp ?? 0).toLocaleString()}`, color: "#2563EB", sub: "100% Direct Risk" },
+          { label: "Total Ceded Premium", value: `₹${(totalCeded ?? 0).toLocaleString()}`, color: "#F59E0B", sub: "21.4% Treaty Cession" },
+          { label: "Net Written Premium (NWP)", value: `₹${(netWrittenPremium ?? 0).toLocaleString()}`, color: "#22C55E", sub: "Retained Balance" },
           { label: "Active RI Treaties", value: String(treaties.length), color: "#8B5CF6", sub: "Proportional & XL" },
         ].map(kpi => (
           <div key={kpi.label} className={`${cardCls} p-5`}>
@@ -188,7 +192,7 @@ export const ReinsurancePage = ({
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
                   <span className="text-slate-600 dark:text-slate-300 text-[11px] truncate max-w-[150px]">{item.name}</span>
                 </div>
-                <span className="text-slate-900 dark:text-white font-bold">₹{item.value.toLocaleString()}</span>
+                <span className="text-slate-900 dark:text-white font-bold">₹{(item.value ?? 0).toLocaleString()}</span>
               </div>
             ))}
           </div>
