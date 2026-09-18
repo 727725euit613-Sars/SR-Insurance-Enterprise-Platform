@@ -307,12 +307,12 @@ export const ChatBot = ({
               setIsMinimized(false);
               setUnreadCount(0);
             }}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold shadow-xl shadow-blue-600/35 hover:shadow-blue-600/50 hover:scale-105 active:scale-95 transition-all duration-200 border border-blue-400/30"
+            className="flex items-center gap-2.5 px-3.5 py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold shadow-xl shadow-blue-600/35 hover:shadow-blue-600/50 hover:scale-105 active:scale-95 transition-all duration-200 border border-blue-400/30"
             aria-label="Open BimaSahayak AI Chatbot"
           >
             <div className="relative">
-              <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center backdrop-blur-sm">
-                <Bot className="w-5 h-5 text-white" />
+              <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center backdrop-blur-sm">
+                <Bot className="w-4 h-4 text-white" />
               </div>
               <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-blue-600 animate-pulse" />
             </div>
@@ -334,8 +334,8 @@ export const ChatBot = ({
       {/* Open Chat Window */}
       {isOpen && (
         <div
-          className={`w-[360px] sm:w-[400px] max-w-[calc(100vw-32px)] rounded-3xl border shadow-2xl transition-all duration-300 flex flex-col ${
-            isMinimized ? "h-16" : "h-[540px] max-h-[85vh]"
+          className={`w-[300px] sm:w-[320px] max-w-[calc(100vw-32px)] rounded-3xl border shadow-2xl transition-all duration-300 flex flex-col ${
+            isMinimized ? "h-14" : "h-[460px] max-h-[75vh]"
           } ${
             darkMode
               ? "bg-[#0A0F1E]/95 border-white/10 text-white backdrop-blur-xl"
