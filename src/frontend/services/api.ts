@@ -1,11 +1,11 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { insuranceStore, type PolicyModel, type ClaimModel, type PaymentModel, type CustomerModel, type AgentModel, type SurveyorModel } from "./insuranceStore";
 
-export type AuthResponse = { token: string; refreshToken: string; tokenType: string; userId: number; username: string; email: string; role: string };
-export type Customer = { customerId: number; name: string; email: string; phone: string; address: string };
+export type AuthResponse = { token: string; refreshToken: string; tokenType: string; userId: number; username: string; email: string; role: string; customerCode?: string; customerId?: number };
+export type Customer = { customerId: number; customerCode?: string; name: string; email: string; phone: string; address: string; policiesCount?: number; totalPremium?: number };
 export type Agent = { agentId: number; name: string; email: string; phone: string; licenseNumber: string; specialization: string };
 export type Surveyor = { surveyorId: number; name: string; email: string; phone: string; specialization: string; department: string };
-export type Policy = { policyId: number; policyNumber: string; policyName: string; policyType: string; premiumAmount: number; duration: number; policyStatus: string; startDate?: string; endDate?: string; coverageAmount?: number; customer?: Pick<Customer, "customerId" | "name" | "email" | "phone">; agent?: Pick<Agent, "agentId" | "name" | "email"> };
+export type Policy = { policyId: number; policyNumber: string; uin?: string; policyName: string; policyType: string; premiumAmount: number; duration: number; policyStatus: string; startDate?: string; endDate?: string; coverageAmount?: number; customerId?: number | string; customerCode?: string; customer?: Pick<Customer, "customerId" | "name" | "email" | "phone"> & { customerCode?: string }; agent?: Pick<Agent, "agentId" | "name" | "email"> };
 export type Claim = { claimId: number; claimNumber: string; claimAmount: number; status: string; description: string; incidentDate?: string; incidentLocation?: string; approvedAmount?: number; assessmentNotes?: string; customer?: Pick<Customer, "customerId" | "name" | "email">; policy?: { policyId: number; policyNumber: string; policyName: string; policyType: string }; surveyor?: Pick<Surveyor, "surveyorId" | "name" | "email" | "phone"> };
 export type Payment = { paymentId: number; transactionId: string; amount: number; paymentMethod: string; paymentDate: string; paymentStatus: string; description?: string; customer?: Pick<Customer, "customerId" | "name" | "email">; policy?: Pick<Policy, "policyId" | "policyNumber" | "policyName"> };
 export type DashboardStats = { totalCustomers: number; totalPolicies: number; activePolicies: number; expiredPolicies: number; totalClaims: number; pendingClaims: number; approvedClaims: number; rejectedClaims: number; totalAgents: number; totalSurveyors: number; totalPremiumCollected: number; totalPaymentsReceived: number; pendingPaymentsAmount: number };
@@ -57,32 +57,83 @@ export async function login(username: string, password: string): Promise<AuthRes
 
   let userRole = demoMatch?.role;
   let userEmail = demoMatch?.email;
-  let userId = demoMatch?.userId || Math.floor(Math.random() * 1000) + 10;
+  let userId = demoMatch?.userId;
+  let customerCode = "";
 
   if (!userRole) {
-    // Check registered users
-    const registered: Array<{ username: string; email: string; role?: string }> = JSON.parse(localStorage.getItem(REGISTERED_USERS_KEY) || "[]");
-    const found = registered.find(u => u.username.toLowerCase() === lowerUser);
+    // 1. Check registered users
+    const registered: Array<{ username: string; email: string; role?: string; userId?: number; customerCode?: string }> = JSON.parse(localStorage.getItem(REGISTERED_USERS_KEY) || "[]");
+    const found = registered.find(u => u.username.toLowerCase() === lowerUser || u.email.toLowerCase() === lowerUser);
     if (found) {
       userRole = found.role || "CUSTOMER";
       userEmail = found.email;
+      userId = found.userId;
+      customerCode = found.customerCode || found.username.toUpperCase();
     } else {
-      if (lowerUser.includes("admin")) userRole = "ADMIN";
-      else if (lowerUser.includes("agent")) userRole = "AGENT";
-      else if (lowerUser.includes("surveyor")) userRole = "SURVEYOR";
-      else userRole = "ADMIN";
-      userEmail = `${lowerUser}@srinsurance.com`;
+      // 2. Check if username matches an existing customer in insuranceStore (e.g. CUST001 or ID)
+      const customers = insuranceStore.getCustomers();
+      const matchedCust = customers.find(c => 
+        String(c.customerId).toLowerCase() === lowerUser ||
+        (c.customerCode && c.customerCode.toLowerCase() === lowerUser) ||
+        c.email.toLowerCase() === lowerUser ||
+        c.name.toLowerCase() === lowerUser
+      );
+
+      if (matchedCust) {
+        userRole = "CUSTOMER";
+        userEmail = matchedCust.email;
+        userId = matchedCust.customerId;
+        customerCode = matchedCust.customerCode || `CUST-${matchedCust.customerId}`;
+      } else {
+        // Fallback role assignment
+        if (lowerUser.includes("admin")) userRole = "ADMIN";
+        else if (lowerUser.includes("agent")) userRole = "AGENT";
+        else if (lowerUser.includes("surveyor")) userRole = "SURVEYOR";
+        else userRole = "CUSTOMER";
+
+        userEmail = `${lowerUser}@srinsurance.com`;
+        customerCode = username.toUpperCase();
+      }
     }
   }
 
+  // Ensure Customer entity is persisted in database for any Customer user
+  if (userRole === "CUSTOMER") {
+    const customers = insuranceStore.getCustomers();
+    let cust = customers.find(c => 
+      (userId && c.customerId === userId) ||
+      (customerCode && c.customerCode && c.customerCode.toLowerCase() === customerCode.toLowerCase()) ||
+      (c.customerCode && c.customerCode.toLowerCase() === lowerUser) ||
+      c.email.toLowerCase() === (userEmail || "").toLowerCase()
+    );
+
+    if (!cust) {
+      const numId = typeof userId === "number" ? userId : (!isNaN(Number(username.replace(/\D/g, ''))) && Number(username.replace(/\D/g, '')) > 0 ? Number(username.replace(/\D/g, '')) : undefined);
+      cust = insuranceStore.addCustomer({
+        customerId: numId,
+        customerCode: customerCode || username.toUpperCase(),
+        name: username,
+        email: userEmail || `${lowerUser}@srinsurance.com`,
+        phone: "+91 98765 00000",
+        address: "SR Insurance Registered Customer, India",
+      });
+    }
+
+    userId = cust.customerId;
+    customerCode = cust.customerCode || customerCode || `CUST-${cust.customerId}`;
+  }
+
+  const finalUserId = userId || (Math.floor(Math.random() * 1000) + 10);
   const auth: AuthResponse = {
-    token: `mock_jwt_token_${Date.now()}`,
-    refreshToken: `mock_refresh_token_${Date.now()}`,
+    token: `jwt_token_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    refreshToken: `refresh_token_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     tokenType: "Bearer",
-    userId,
+    userId: finalUserId,
     username,
-    email: userEmail,
-    role: userRole,
+    email: userEmail || `${lowerUser}@srinsurance.com`,
+    role: userRole || "CUSTOMER",
+    customerCode: customerCode || username.toUpperCase(),
+    customerId: finalUserId,
   };
 
   storeAuth(auth);
@@ -95,18 +146,45 @@ export async function register(payload: { username: string; email: string; passw
     throw new Error("All registration fields are required");
   }
 
-  const registered = JSON.parse(localStorage.getItem(REGISTERED_USERS_KEY) || "[]");
-  registered.push({ username: payload.username, email: payload.email, role: "CUSTOMER" });
+  const registered: Array<{ username: string; email: string; role?: string; userId?: number; customerCode?: string }> = JSON.parse(localStorage.getItem(REGISTERED_USERS_KEY) || "[]");
+  if (registered.some(u => u.username.toLowerCase() === payload.username.toLowerCase().trim())) {
+    throw new Error("Username already taken. Please login or choose another.");
+  }
+
+  // Create & persist customer in insurance database immediately
+  const cleanCode = payload.username.trim().toUpperCase();
+  const numId = !isNaN(Number(payload.username.replace(/\D/g, ''))) && Number(payload.username.replace(/\D/g, '')) > 0
+    ? Number(payload.username.replace(/\D/g, ''))
+    : undefined;
+
+  const customer = insuranceStore.addCustomer({
+    customerId: numId,
+    customerCode: cleanCode,
+    name: payload.username.trim(),
+    email: payload.email.trim(),
+    phone: "+91 98765 00000",
+    address: "SR Insurance Registered Customer, India",
+  });
+
+  registered.push({
+    username: payload.username.trim(),
+    email: payload.email.trim(),
+    role: "CUSTOMER",
+    userId: customer.customerId,
+    customerCode: customer.customerCode || cleanCode,
+  });
   localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(registered));
 
   const auth: AuthResponse = {
-    token: `mock_jwt_token_${Date.now()}`,
-    refreshToken: `mock_refresh_token_${Date.now()}`,
+    token: `jwt_token_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    refreshToken: `refresh_token_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     tokenType: "Bearer",
-    userId: registered.length + 10,
-    username: payload.username,
-    email: payload.email,
+    userId: customer.customerId,
+    username: payload.username.trim(),
+    email: payload.email.trim(),
     role: "CUSTOMER",
+    customerCode: customer.customerCode || cleanCode,
+    customerId: customer.customerId,
   };
 
   storeAuth(auth);
@@ -149,6 +227,7 @@ function mapPolicy(p: PolicyModel): Policy {
   return {
     policyId: p.policyId,
     policyNumber: p.policyNumber,
+    uin: p.uin,
     policyName: p.productName || p.name || p.policyNumber,
     policyType: p.policyType,
     premiumAmount: p.annualPremium || p.grossPremium || p.premiumPaid || 15000,
@@ -157,8 +236,11 @@ function mapPolicy(p: PolicyModel): Policy {
     startDate: p.startDate,
     endDate: p.endDate,
     coverageAmount: p.sumInsured,
+    customerId: p.customerId,
+    customerCode: p.customerCode,
     customer: {
-      customerId: p.customerId || 1,
+      customerId: typeof p.customerId === "number" ? p.customerId : 1,
+      customerCode: p.customerCode,
       name: p.customerName || "Customer",
       email: p.customerEmail || "customer@sr.com",
       phone: p.customerPhone || "+91 98765 43210",
@@ -229,10 +311,13 @@ function mapPayment(p: PaymentModel): Payment {
 function mapCustomer(c: CustomerModel): Customer {
   return {
     customerId: c.customerId,
+    customerCode: c.customerCode || `CUST-${c.customerId}`,
     name: c.name,
     email: c.email,
     phone: c.phone || c.mobile || "",
     address: c.address,
+    policiesCount: c.policiesCount,
+    totalPremium: c.totalPremium,
   };
 }
 
@@ -259,13 +344,65 @@ function mapSurveyor(s: SurveyorModel): Surveyor {
 }
 
 export const policiesApi = {
-  getAll: async (): Promise<Policy[]> => {
+  getAll: async (customerId?: number | string): Promise<Policy[]> => {
     await delay();
-    return insuranceStore.getPolicies().map(mapPolicy);
+    let list = insuranceStore.getPolicies().map(mapPolicy);
+    if (customerId !== undefined && customerId !== null && String(customerId).trim() !== "") {
+      const target = String(customerId).trim().toLowerCase();
+      list = list.filter(p => 
+        String(p.customerId).toLowerCase() === target ||
+        (p.customerCode && p.customerCode.toLowerCase() === target) ||
+        String(p.customer?.customerId).toLowerCase() === target ||
+        (p.customer?.customerCode && p.customer.customerCode.toLowerCase() === target) ||
+        (p.customer?.name && p.customer.name.toLowerCase() === target) ||
+        (p.customer?.email && p.customer.email.toLowerCase() === target)
+      );
+    }
+    return list;
+  },
+  getByCustomer: async (customerId: number | string): Promise<Policy[]> => {
+    await delay();
+    const target = String(customerId).trim().toLowerCase();
+    return insuranceStore.getPolicies().map(mapPolicy).filter(p => 
+      String(p.customerId).toLowerCase() === target ||
+      (p.customerCode && p.customerCode.toLowerCase() === target) ||
+      String(p.customer?.customerId).toLowerCase() === target ||
+      (p.customer?.customerCode && p.customer.customerCode.toLowerCase() === target) ||
+      (p.customer?.name && p.customer.name.toLowerCase() === target) ||
+      (p.customer?.email && p.customer.email.toLowerCase() === target)
+    );
   },
   create: async (p: Record<string, unknown>): Promise<Policy> => {
     await delay();
-    const created = insuranceStore.addPolicy(p);
+    const userJson = localStorage.getItem(USER_KEY);
+    let currentUser: AuthResponse | null = null;
+    if (userJson) {
+      try { currentUser = JSON.parse(userJson); } catch {}
+    }
+
+    const assignedCustomerId = p.customerId ?? (currentUser?.role === "CUSTOMER" ? currentUser.userId : 1);
+    const assignedCustomerCode = (p.customerCode || (currentUser?.role === "CUSTOMER" ? (currentUser.customerCode || currentUser.username) : undefined)) as string | undefined;
+
+    const created = insuranceStore.createPolicy({
+      productName: (p.productName || p.policyName || p.name || "Comprehensive Insurance Plan") as string,
+      policyType: ((p.policyType || p.category || "Motor") as string).charAt(0).toUpperCase() + ((p.policyType || p.category || "Motor") as string).slice(1) as any,
+      sumInsured: Number(p.sumInsured || p.coverageAmount || p.idv || 1000000),
+      annualPremium: Number(p.annualPremium || p.premiumAmount || p.grossPremium || 15000),
+      customerId: assignedCustomerId,
+      customerCode: assignedCustomerCode,
+      customerName: (p.customerName as string) || (currentUser?.role === "CUSTOMER" ? currentUser.username : "Customer"),
+      customerEmail: (p.customerEmail as string) || (currentUser?.role === "CUSTOMER" ? currentUser.email : "customer@srinsurance.com"),
+      customerPhone: (p.customerPhone as string) || "+91 98765 00000",
+      customerAddress: (p.customerAddress as string) || "India",
+      vehicleNo: (p.vehicleNo || p.vehicleDetails || p.registrationNumber) as string,
+      vehicleMake: (p.vehicleMake || p.makeModel) as string,
+      nomineeName: (p.nomineeName || "Spouse") as string,
+      nomineeRelation: (p.nomineeRelation || "Spouse") as string,
+      ncbPct: Number(p.ncbPct || 20),
+      agentId: p.agentId ? Number(p.agentId) : undefined,
+      agentName: p.agentName as string,
+      uin: p.uin as string,
+    });
     return mapPolicy(created);
   },
   update: async (id: number, p: Record<string, unknown>): Promise<Policy> => {

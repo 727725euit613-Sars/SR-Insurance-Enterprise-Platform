@@ -15,21 +15,28 @@ import {
 
 export interface CustomerModel {
   customerId: number;
+  customerCode?: string;
   id?: number | string;
   name: string;
-  dob: string;
-  mobile: string;
+  dob?: string;
+  mobile?: string;
   phone?: string;
   email: string;
-  pan: string;
-  aadhaarHmac: string;
+  pan?: string;
+  panNumber?: string;
+  aadhaarHmac?: string;
+  aadhaarLastFour?: string;
   address: string;
-  kycStatus: "PENDING" | "VERIFIED" | "FAILED" | string;
-  amlStatus: "CLEAR" | "FLAGGED" | "BLOCKED" | string;
+  kycStatus?: "PENDING" | "VERIFIED" | "FAILED" | string;
+  ekycStatus?: string;
+  amlStatus?: "CLEAR" | "FLAGGED" | "BLOCKED" | string;
+  riskProfile?: string;
+  creditScore?: number;
   policiesCount: number;
-  totalPremium: number;
-  customerType: "VIP" | "Premium" | "Standard" | string;
-  sinceYear: string;
+  totalPremium?: number;
+  activeClaimsCount?: number;
+  customerType?: "VIP" | "Premium" | "Standard" | string;
+  sinceYear?: string;
 }
 
 export interface ProductModel {
@@ -60,6 +67,7 @@ export interface PolicyModel {
   policyId: number;
   id?: number | string;
   policyNumber: string; // Format: POL-LOB-YYYYMM-NNNNNN
+  uin?: string;
   productName: string;
   name?: string;
   policyType: "Motor" | "Health" | "Life" | "Property" | "Travel" | "Commercial" | string;
@@ -74,7 +82,8 @@ export interface PolicyModel {
   ncbPct: number; // 0, 20, 25, 35, 45, 50
   ncbPercentage?: number;
   riCededPct: number;
-  customerId: number;
+  customerId: number | string;
+  customerCode?: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -442,10 +451,12 @@ class InsuranceStore {
     policyType: PolicyModel["policyType"];
     sumInsured: number;
     annualPremium: number;
+    customerId?: number | string;
+    customerCode?: string;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
-    customerAddress: string;
+    customerAddress?: string;
     vehicleNo?: string;
     vehicleMake?: string;
     nomineeName?: string;
@@ -453,6 +464,7 @@ class InsuranceStore {
     ncbPct?: number;
     agentId?: number;
     agentName?: string;
+    uin?: string;
   }): PolicyModel {
     if (!payload.productName.trim() || !payload.customerName.trim()) {
       throw new Error("Product and customer name are required");
@@ -494,9 +506,38 @@ class InsuranceStore {
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     const endDate = nextYear.toISOString().split("T")[0];
 
+    // Resolve or create customer in store
+    const customers = this.getCustomers();
+    const searchTarget = String(payload.customerId || payload.customerCode || "").trim().toLowerCase();
+    let matchedCustomer = customers.find(c => 
+      (searchTarget && String(c.customerId).toLowerCase() === searchTarget) ||
+      (searchTarget && c.customerCode && c.customerCode.toLowerCase() === searchTarget) ||
+      (payload.customerEmail && c.email.toLowerCase() === payload.customerEmail.toLowerCase()) ||
+      (c.name.toLowerCase() === payload.customerName.toLowerCase())
+    );
+
+    if (!matchedCustomer && (payload.customerName || payload.customerEmail)) {
+      const numericId = typeof payload.customerId === "number" 
+        ? payload.customerId 
+        : (!isNaN(Number(payload.customerId)) && Number(payload.customerId) > 0 ? Number(payload.customerId) : undefined);
+      matchedCustomer = this.addCustomer({
+        customerId: numericId,
+        customerCode: payload.customerCode || (typeof payload.customerId === "string" ? payload.customerId : undefined),
+        name: payload.customerName || "Customer",
+        email: payload.customerEmail || "customer@srinsurance.com",
+        phone: payload.customerPhone || "+91 98765 00000",
+        address: payload.customerAddress || "India",
+      });
+    }
+
+    const assignedCustomerId = matchedCustomer ? matchedCustomer.customerId : (payload.customerId || 1);
+    const assignedCustomerCode = matchedCustomer?.customerCode || payload.customerCode || `CUST-${assignedCustomerId}`;
+    const uin = payload.uin || `IRDAI/NL-GI/${lobCode}/${now.getFullYear()}/${randSeq.slice(0, 4)}`;
+
     const newPolicy: PolicyModel = {
-      policyId: policies.length + 1,
+      policyId: policies.length > 0 ? Math.max(...policies.map(p => p.policyId || 0)) + 1 : 1,
       policyNumber,
+      uin,
       productName: payload.productName,
       policyType: payload.policyType,
       sumInsured: payload.sumInsured,
@@ -507,11 +548,12 @@ class InsuranceStore {
       status: "Active",
       ncbPct: payload.ncbPct || 20,
       riCededPct: 20,
-      customerId: 1,
-      customerName: payload.customerName,
-      customerEmail: payload.customerEmail,
-      customerPhone: payload.customerPhone,
-      customerAddress: payload.customerAddress,
+      customerId: assignedCustomerId,
+      customerCode: assignedCustomerCode,
+      customerName: matchedCustomer?.name || payload.customerName,
+      customerEmail: matchedCustomer?.email || payload.customerEmail,
+      customerPhone: matchedCustomer?.phone || matchedCustomer?.mobile || payload.customerPhone,
+      customerAddress: matchedCustomer?.address || payload.customerAddress || "India",
       vehicleNo: payload.vehicleNo,
       vehicleMake: payload.vehicleMake,
       nomineeName: payload.nomineeName || "Spouse",
@@ -523,11 +565,18 @@ class InsuranceStore {
     policies.unshift(newPolicy);
     this.set("policies", policies);
 
+    // Update customer policy count & premium
+    if (matchedCustomer) {
+      matchedCustomer.policiesCount = (matchedCustomer.policiesCount || 0) + 1;
+      matchedCustomer.totalPremium = (matchedCustomer.totalPremium || 0) + newPolicy.annualPremium;
+      this.set("customers", customers);
+    }
+
     // Record Payment
     this.recordPayment({
       policyId: newPolicy.policyId,
       policyNumber: newPolicy.policyNumber,
-      customerId: 1,
+      customerId: typeof assignedCustomerId === "number" ? assignedCustomerId : 1,
       customerName: newPolicy.customerName,
       amount: newPolicy.annualPremium,
       paymentMethod: "UPI",
@@ -539,7 +588,7 @@ class InsuranceStore {
       this.creditAgentCommission(payload.agentId, payload.annualPremium);
     }
 
-    this.logAudit("POLICY_ISSUED", "POLICY", policyNumber, `Issued policy for ${payload.customerName} (₹${payload.annualPremium})`);
+    this.logAudit("POLICY_CREATED", "POLICY", policyNumber, `Created policy ${policyNumber} for customer ${assignedCustomerCode || assignedCustomerId}`);
     return newPolicy;
   }
 
@@ -1000,25 +1049,30 @@ class InsuranceStore {
     const randSeq = String(Math.floor(100000 + Math.random() * 900000));
     const lobCode = (policy.policyType || policy.category || "GEN").slice(0, 3).toUpperCase();
     const policyNumber = policy.policyNumber || `POL-${lobCode}-${yyyymm}-${randSeq}`;
+    const rawCustId = policy.customerId || (policy.customer && policy.customer.customerId) || (policy.customerCode ? policy.customerCode : 1);
+    const assignedCustomerId = typeof rawCustId === "number" ? rawCustId : (!isNaN(Number(rawCustId)) ? Number(rawCustId) : rawCustId);
+    const assignedCustomerCode = policy.customerCode || (policy.customer && policy.customer.customerCode) || (typeof rawCustId === "string" ? rawCustId : `CUST-${assignedCustomerId}`);
 
     const newPolicy: PolicyModel = {
-      policyId: policy.policyId || policy.id || policies.length + 1,
+      policyId: policy.policyId || policy.id || (policies.length > 0 ? Math.max(...policies.map(p => p.policyId || 0)) + 1 : 1),
       policyNumber,
+      uin: policy.uin || `IRDAI/NL-GI/${lobCode}/${now.getFullYear()}/${randSeq.slice(0, 4)}`,
       productName: policy.productName || policy.name || "Custom Insurance Plan",
       policyType: policy.policyType || (policy.category ? policy.category.replace(/_.*/, '') : "Motor") as any,
-      sumInsured: policy.sumInsured || policy.idv || 1000000,
-      annualPremium: policy.annualPremium || policy.grossPremium || 15000,
-      premiumPaid: policy.premiumPaid || policy.annualPremium || policy.grossPremium || 15000,
+      sumInsured: Number(policy.sumInsured || policy.idv || 1000000),
+      annualPremium: Number(policy.annualPremium || policy.grossPremium || 15000),
+      premiumPaid: Number(policy.premiumPaid || policy.annualPremium || policy.grossPremium || 15000),
       startDate: policy.startDate || now.toISOString().split("T")[0],
       endDate: policy.endDate || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
       status: policy.status || "Active",
       ncbPct: policy.ncbPct || policy.ncbDiscount || 20,
       riCededPct: policy.riCededPct || 20,
-      customerId: policy.customerId || 1,
-      customerName: policy.customerName || (policy.customer && policy.customer.name) || "Arjun Mehta",
-      customerEmail: policy.customerEmail || (policy.customer && policy.customer.email) || "arjun.m@email.com",
-      customerPhone: policy.customerPhone || (policy.customer && policy.customer.mobile) || "+91 98765 43210",
-      customerAddress: policy.customerAddress || (policy.customer && policy.customer.address) || "Bengaluru, Karnataka",
+      customerId: assignedCustomerId,
+      customerCode: assignedCustomerCode,
+      customerName: policy.customerName || (policy.customer && policy.customer.name) || "Customer",
+      customerEmail: policy.customerEmail || (policy.customer && policy.customer.email) || "customer@srinsurance.com",
+      customerPhone: policy.customerPhone || (policy.customer && (policy.customer.mobile || policy.customer.phone)) || "+91 98765 00000",
+      customerAddress: policy.customerAddress || (policy.customer && policy.customer.address) || "India",
       vehicleNo: policy.vehicleNo || policy.vehicleDetails,
       nomineeName: policy.nomineeName || "Spouse",
       nomineeRelation: policy.nomineeRelation || "Spouse",
@@ -1026,7 +1080,17 @@ class InsuranceStore {
 
     policies.unshift(newPolicy);
     this.set("policies", policies);
-    this.logAudit("POLICY_ISSUED", "POLICY", policyNumber, `Issued policy ${policyNumber}`);
+
+    // Update customer stats in store
+    const customers = this.getCustomers();
+    const cust = customers.find(c => String(c.customerId) === String(assignedCustomerId) || (c.customerCode && c.customerCode.toLowerCase() === String(assignedCustomerCode).toLowerCase()));
+    if (cust) {
+      cust.policiesCount = (cust.policiesCount || 0) + 1;
+      cust.totalPremium = (cust.totalPremium || 0) + newPolicy.annualPremium;
+      this.set("customers", customers);
+    }
+
+    this.logAudit("POLICY_ISSUED", "POLICY", policyNumber, `Issued policy ${policyNumber} for customer ${assignedCustomerCode}`);
     return newPolicy;
   }
 
@@ -1118,24 +1182,47 @@ class InsuranceStore {
 
   addCustomer(customer: Partial<CustomerModel>): CustomerModel {
     const customers = this.getCustomers();
+    const explicitId = typeof customer.customerId === "number" 
+      ? customer.customerId 
+      : (typeof customer.id === "number" ? customer.id : (!isNaN(Number(customer.customerId || customer.id)) && Number(customer.customerId || customer.id) > 0 ? Number(customer.customerId || customer.id) : undefined));
+
+    const finalId = explicitId !== undefined ? explicitId : (customers.length > 0 ? Math.max(...customers.map(c => c.customerId)) + 1 : 1);
+    const finalCode = customer.customerCode || (typeof customer.id === "string" ? customer.id : (typeof customer.customerId === "string" ? customer.customerId : `CUST-${finalId}`));
+
     const newCustomer: CustomerModel = {
-      customerId: customers.length > 0 ? Math.max(...customers.map(c => c.customerId)) + 1 : 1,
+      customerId: finalId,
+      customerCode: finalCode,
       name: customer.name || "New Customer",
       email: customer.email || "customer@example.com",
       mobile: customer.mobile || customer.phone || "+91 98765 00000",
       phone: customer.phone || customer.mobile || "+91 98765 00000",
       address: customer.address || "India",
-      panNumber: customer.panNumber || "ABCDE1234F",
+      pan: customer.pan || customer.panNumber || "ABCDE1234F",
+      panNumber: customer.panNumber || customer.pan || "ABCDE1234F",
+      aadhaarHmac: customer.aadhaarHmac || "aadhaar_hmac_verified",
       aadhaarLastFour: customer.aadhaarLastFour || "1234",
+      kycStatus: (customer.kycStatus || customer.ekycStatus || "VERIFIED") as any,
       ekycStatus: customer.ekycStatus || "VERIFIED",
+      amlStatus: (customer.amlStatus || "CLEAR") as any,
       riskProfile: customer.riskProfile || "Medium",
       creditScore: customer.creditScore || 750,
-      policiesCount: 0,
-      activeClaimsCount: 0,
+      policiesCount: customer.policiesCount || 0,
+      totalPremium: customer.totalPremium || 0,
+      activeClaimsCount: customer.activeClaimsCount || 0,
+      customerType: customer.customerType || "Standard",
+      sinceYear: customer.sinceYear || String(new Date().getFullYear()),
     };
-    customers.unshift(newCustomer);
+
+    // Replace if same customerId already exists, else unshift
+    const existingIdx = customers.findIndex(c => c.customerId === finalId || (c.customerCode && c.customerCode.toLowerCase() === finalCode.toLowerCase()));
+    if (existingIdx >= 0) {
+      customers[existingIdx] = { ...customers[existingIdx], ...newCustomer };
+    } else {
+      customers.unshift(newCustomer);
+    }
+
     this.set("customers", customers);
-    this.logAudit("CUSTOMER_CREATED", "CUSTOMER", String(newCustomer.customerId), `Created customer ${newCustomer.name}`);
+    this.logAudit("CUSTOMER_CREATED", "CUSTOMER", String(newCustomer.customerId), `Created customer ${newCustomer.name} (${finalCode})`);
     return newCustomer;
   }
 

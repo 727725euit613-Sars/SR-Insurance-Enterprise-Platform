@@ -78,26 +78,63 @@ export const ChatBot = ({
     { label: "🧪 Run SRS Tests", query: "Show SRS test suite" },
   ];
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const query = (textToSend || input).trim();
     if (!query) return;
 
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       sender: "user",
       text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: timeStr,
     };
 
     setMessages(prev => [...prev, userMsg]);
     if (!textToSend) setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const botResponse = generateSmartResponse(query);
-      setMessages(prev => [...prev, botResponse]);
-      setIsTyping(false);
-    }, 450);
+    // If query is an exact local command or claim lookup, generate structured response immediately
+    const claimMatch = query.match(/CLM-[\w-]+/i) || query.match(/\b\d{4,}\b/);
+    if (claimMatch || query.toLowerCase().includes("track claim") || query.toLowerCase().includes("srs test")) {
+      setTimeout(() => {
+        const botResponse = generateSmartResponse(query);
+        setMessages(prev => [...prev, botResponse]);
+        setIsTyping(false);
+      }, 400);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: query }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.response) {
+          const aiMsg: Message = {
+            id: `bot-${Date.now()}`,
+            sender: "bot",
+            text: data.response,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            badge: { text: "Gemini AI", variant: "info" }
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          setIsTyping(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("AI chat API fetch error, falling back to local engine:", err);
+    }
+
+    // Fallback to local rule engine
+    const botResponse = generateSmartResponse(query);
+    setMessages(prev => [...prev, botResponse]);
+    setIsTyping(false);
   };
 
   const generateSmartResponse = (query: string): Message => {
@@ -297,7 +334,7 @@ export const ChatBot = ({
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
+    <div className="fixed bottom-4 right-4 z-50 font-sans">
       {/* Closed State Floating Launcher Button */}
       {!isOpen && (
         <div className="relative group">
@@ -307,23 +344,23 @@ export const ChatBot = ({
               setIsMinimized(false);
               setUnreadCount(0);
             }}
-            className="flex items-center gap-2.5 px-3.5 py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold shadow-xl shadow-blue-600/35 hover:shadow-blue-600/50 hover:scale-105 active:scale-95 transition-all duration-200 border border-blue-400/30"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[#0B132B] hover:bg-blue-900/90 text-white font-semibold shadow-lg shadow-black/20 hover:shadow-xl transition-all duration-200 border border-blue-500/40"
             aria-label="Open BimaSahayak AI Chatbot"
           >
             <div className="relative">
-              <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center backdrop-blur-sm">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                 <Bot className="w-4 h-4 text-white" />
               </div>
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-blue-600 animate-pulse" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-[#0B132B]" />
             </div>
 
             <div className="text-left hidden sm:block pr-1">
-              <span className="text-xs font-black block leading-none">BimaSahayak AI</span>
-              <span className="text-[10px] text-blue-200 font-medium leading-tight">Claims &amp; Policy Assistant</span>
+              <span className="text-xs font-bold block leading-none text-white">BimaSahayak AI</span>
+              <span className="text-[10px] text-slate-300 font-medium leading-none mt-1 block">Help Desk &amp; FNOL</span>
             </div>
 
             {unreadCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black flex items-center justify-center shadow-sm">
+              <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-bold flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
@@ -334,68 +371,68 @@ export const ChatBot = ({
       {/* Open Chat Window */}
       {isOpen && (
         <div
-          className={`w-[300px] sm:w-[320px] max-w-[calc(100vw-32px)] rounded-3xl border shadow-2xl transition-all duration-300 flex flex-col ${
-            isMinimized ? "h-14" : "h-[460px] max-h-[75vh]"
+          className={`w-[320px] sm:w-[350px] max-w-[calc(100vw-24px)] rounded-xl border shadow-2xl transition-all duration-300 flex flex-col ${
+            isMinimized ? "h-12" : "h-[460px] max-h-[75vh]"
           } ${
             darkMode
-              ? "bg-[#0A0F1E]/95 border-white/10 text-white backdrop-blur-xl"
-              : "bg-white/95 border-slate-200/90 text-slate-900 backdrop-blur-xl"
+              ? "bg-[#0B132B] border-slate-700 text-white"
+              : "bg-white border-slate-200 text-slate-900 shadow-slate-200/50"
           }`}
         >
           {/* Header */}
           <div
-            className={`p-4 border-b flex items-center justify-between rounded-t-3xl select-none ${
+            className={`p-3 border-b flex items-center justify-between rounded-t-2xl select-none ${
               darkMode
                 ? "bg-slate-900/80 border-white/[0.08]"
                 : "bg-slate-50/90 border-slate-100"
             }`}
           >
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-600/30">
-                  <Bot className="w-5 h-5" />
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-sm shadow-blue-600/30">
+                  <Bot className="w-4 h-4" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-900" />
               </div>
 
               <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs sm:text-sm font-black tracking-tight leading-none">
+                <div className="flex items-center gap-1">
+                  <h3 className="text-xs font-bold tracking-tight leading-none">
                     BimaSahayak AI
                   </h3>
-                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <span className="px-1 py-0.2 rounded-full text-[8px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                     SRS-42
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  Instant Policy &amp; Claim FNOL Support
+                <p className="text-[9px] text-slate-400 font-medium mt-0.5 leading-none">
+                  Policy &amp; Claim FNOL Support
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <button
                 onClick={clearChat}
                 title="Restart Conversation"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3 h-3" />
               </button>
 
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
                 title={isMinimized ? "Maximize" : "Minimize"}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
               >
-                <Minimize2 className="w-3.5 h-3.5" />
+                <Minimize2 className="w-3 h-3" />
               </button>
 
               <button
                 onClick={() => setIsOpen(false)}
                 title="Close Chat"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/[0.06] transition-colors"
+                className="p-1 rounded-md text-slate-400 hover:text-red-400 hover:bg-white/[0.06] transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -404,36 +441,36 @@ export const ChatBot = ({
           {!isMinimized && (
             <>
               {/* Message List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs leading-relaxed">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-xs leading-relaxed">
                 {/* Intro notice banner */}
                 <div
-                  className={`p-3 rounded-2xl border text-[11px] space-y-1 ${
+                  className={`p-2.5 rounded-xl border text-[10px] space-y-1 ${
                     darkMode
                       ? "bg-blue-950/30 border-blue-500/20 text-blue-200"
                       : "bg-blue-50/70 border-blue-200/60 text-blue-900"
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-bold">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                    <Sparkles className="w-3 h-3 text-blue-400" />
                     <span>Real-time Insurance Help Desk</span>
                   </div>
-                  <p className="text-slate-400 text-[10px] leading-tight">
-                    Ask for policy validity, track claims by ID (e.g. <code>CLM-202401-002847</code>), or enquire about statutory NCB &amp; TAT rules.
+                  <p className="text-slate-400 text-[9px] leading-tight">
+                    Ask for policy validity, track claims by ID, or enquire about statutory NCB &amp; TAT rules.
                   </p>
                 </div>
 
                 {/* Quick Suggestion Chips */}
                 {messages.length <= 2 && (
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
+                  <div className="space-y-1 pt-0.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block px-0.5">
                       Quick Questions
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1">
                       {quickChips.map((chip, idx) => (
                         <button
                           key={idx}
                           onClick={() => handleSend(chip.query)}
-                          className={`text-[11px] px-2.5 py-1.5 rounded-xl border font-bold text-left transition-all ${
+                          className={`text-[10px] px-2 py-1 rounded-lg border font-bold text-left transition-all ${
                             darkMode
                               ? "bg-slate-800/60 hover:bg-blue-600/20 border-white/[0.08] hover:border-blue-500/40 text-slate-300 hover:text-white"
                               : "bg-slate-100 hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-900"
@@ -455,9 +492,9 @@ export const ChatBot = ({
                     }`}
                   >
                     <div
-                      className={`max-w-[85%] p-3.5 rounded-2xl space-y-2 ${
+                      className={`max-w-[85%] p-2.5 rounded-xl space-y-1.5 ${
                         msg.sender === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md shadow-blue-600/20"
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-sm shadow-blue-600/20"
                           : darkMode
                           ? "bg-slate-800/80 border border-white/[0.07] text-slate-200 rounded-tl-none"
                           : "bg-slate-100/90 border border-slate-200/80 text-slate-800 rounded-tl-none shadow-sm"
@@ -466,7 +503,7 @@ export const ChatBot = ({
                       {/* Optional Status Badge */}
                       {msg.badge && (
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                          className={`inline-block px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
                             msg.badge.variant === "success"
                               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                               : msg.badge.variant === "warning"
@@ -489,19 +526,19 @@ export const ChatBot = ({
 
                       {/* Interactive Action Buttons */}
                       {msg.actions && msg.actions.length > 0 && (
-                        <div className="pt-2 flex flex-wrap gap-1.5 border-t border-white/[0.08]">
+                        <div className="pt-1.5 flex flex-wrap gap-1 border-t border-white/[0.08]">
                           {msg.actions.map((act, actIdx) => (
                             <button
                               key={actIdx}
                               onClick={act.action}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all ${
+                              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-extrabold transition-all ${
                                 darkMode
                                   ? "bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30"
                                   : "bg-blue-100 hover:bg-blue-600 text-blue-800 hover:text-white border border-blue-300"
                               }`}
                             >
                               <span>{act.label}</span>
-                              <ArrowUpRight className="w-3 h-3" />
+                              <ArrowUpRight className="w-2.5 h-2.5" />
                             </button>
                           ))}
                         </div>
@@ -517,8 +554,8 @@ export const ChatBot = ({
                 {/* Typing Indicator */}
                 {isTyping && (
                   <div className="flex items-center gap-2 text-slate-400 p-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400">
-                      <Bot className="w-3.5 h-3.5" />
+                    <div className="w-5 h-5 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400">
+                      <Bot className="w-3 h-3" />
                     </div>
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -533,7 +570,7 @@ export const ChatBot = ({
 
               {/* Chat Input Field */}
               <div
-                className={`p-3 border-t flex items-center gap-2 rounded-b-3xl ${
+                className={`p-2.5 border-t flex items-center gap-1.5 rounded-b-2xl ${
                   darkMode
                     ? "bg-slate-900/90 border-white/[0.08]"
                     : "bg-slate-50 border-slate-100"
@@ -551,7 +588,7 @@ export const ChatBot = ({
                     }
                   }}
                   placeholder="Ask a question or enter Claim ID..."
-                  className={`flex-1 px-3.5 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none transition-all ${
                     darkMode
                       ? "bg-slate-800/80 border-white/10 text-white placeholder-slate-500 focus:border-blue-500"
                       : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500"
@@ -561,10 +598,10 @@ export const ChatBot = ({
                 <button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || isTyping}
-                  className="w-9 h-9 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white flex items-center justify-center shadow-md shadow-blue-600/30 transition-all active:scale-95 flex-shrink-0"
+                  className="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white flex items-center justify-center shadow-sm shadow-blue-600/30 transition-all active:scale-95 flex-shrink-0"
                   aria-label="Send Message"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
             </>

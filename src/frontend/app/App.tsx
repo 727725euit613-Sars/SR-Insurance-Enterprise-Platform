@@ -10,7 +10,7 @@ import {
   Bot, Moon, Sun, ChevronLeft, MoreVertical,
   Edit, Trash2, AlertTriangle, Check,
   LayoutDashboard, FileCheck, Banknote, UserCog,
-  BarChart, Key, Building, Play, Package, Filter
+  BarChart, Key, Building, Building2, Play, Package, Filter, Calculator
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart as RechartsBar, Bar, PieChart, Pie, Cell,
@@ -29,6 +29,8 @@ import { ReinsurancePage } from "../pages/ReinsurancePage";
 import { QuotePage } from "../pages/QuotePage";
 import { MarketplacePage } from "../pages/MarketplacePage";
 import { ChatBot } from "../components/ChatBot";
+import { PolicyModal } from "../components/modals/PolicyModal";
+import { insuranceStore, type ProductModel } from "../services/insuranceStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Page =
@@ -271,29 +273,64 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, collapsed, setCollapsed, u
 }) => {
   const groups = getNavGroups(user.role as Role);
   const initials = user.username.slice(0, 2).toUpperCase();
+
+  const roleLabelMap: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    ADMIN: { label: "ADMINISTRATOR", bg: "bg-purple-950/60", text: "text-purple-300", border: "border-purple-500/30" },
+    AGENT: { label: "LICENSED AGENT", bg: "bg-amber-950/60", text: "text-amber-300", border: "border-amber-500/30" },
+    SURVEYOR: { label: "IRDAI SURVEYOR", bg: "bg-cyan-950/60", text: "text-cyan-300", border: "border-cyan-500/30" },
+    CUSTOMER: { label: "POLICYHOLDER", bg: "bg-blue-950/60", text: "text-blue-300", border: "border-blue-500/30" },
+  };
+  const roleStyle = roleLabelMap[user.role.toUpperCase()] || roleLabelMap.CUSTOMER;
+
   return (
-    <aside className={`flex flex-col bg-[#070C18] border-r border-white/[0.04] transition-all duration-300 ${collapsed ? "w-16" : "w-60"} flex-shrink-0 h-screen sticky top-0`}>
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.04]">
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-700/40">
+    <aside className={`flex flex-col bg-[#0B132B] border-r border-slate-800 transition-all duration-300 ${collapsed ? "w-16" : "w-64"} flex-shrink-0 h-screen sticky top-0 z-20`}>
+      {/* Brand Header */}
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-800">
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-600/30">
           <Shield className="w-4 h-4 text-white" />
         </div>
-        {!collapsed && <div className="min-w-0"><div className="text-sm font-bold text-white leading-none">SR Insurance</div><div className="text-[10px] text-blue-400 leading-none mt-0.5">Enterprise Platform</div></div>}
-        <button onClick={() => setCollapsed(!collapsed)} className="ml-auto text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0">
+        {!collapsed && (
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold text-white tracking-tight leading-none">SR Insurance</div>
+            <div className="text-[10px] font-medium text-slate-400 leading-none mt-1">IRDAI Reg. 142/2023</div>
+          </div>
+        )}
+        <button 
+          onClick={() => setCollapsed(!collapsed)} 
+          className="ml-auto text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors flex-shrink-0"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
-      <nav className="flex-1 px-2 py-4 overflow-y-auto space-y-5 scrollbar-none">
+
+      {/* Role Pill */}
+      {!collapsed && (
+        <div className="px-4 py-2.5 bg-[#090F21] border-b border-slate-800/80">
+          <div className={`text-[10px] font-bold px-2.5 py-1 rounded border flex items-center justify-between ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border}`}>
+            <span>PORTAL:</span>
+            <span className="tracking-wider">{roleStyle.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Groups */}
+      <nav className="flex-1 px-2.5 py-4 overflow-y-auto space-y-5 scrollbar-none">
         {groups.map(group => (
           <div key={group.title}>
-            {!collapsed && <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-2 mb-1.5">{group.title}</p>}
-            <div className="space-y-0.5">
+            {!collapsed && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">{group.title}</p>}
+            <div className="space-y-1">
               {group.items.map(({ label, page, Icon }) => {
                 const active = currentPage === page;
                 return (
                   <button key={page} onClick={() => onNavigate(page)} title={collapsed ? label : undefined}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-semibold ${active ? "bg-blue-600 text-white shadow-lg shadow-blue-700/30" : "text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]"} ${collapsed ? "justify-center" : ""}`}>
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    {!collapsed && label}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-xs font-semibold ${
+                      active 
+                        ? "bg-blue-600 text-white shadow-sm" 
+                        : "text-slate-300 hover:text-white hover:bg-slate-800/70"
+                    } ${collapsed ? "justify-center" : ""}`}>
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-white" : "text-slate-400"}`} />
+                    {!collapsed && <span>{label}</span>}
                   </button>
                 );
               })}
@@ -301,17 +338,25 @@ const Sidebar = ({ currentPage, onNavigate, onLogout, collapsed, setCollapsed, u
           </div>
         ))}
       </nav>
-      <div className="px-3 py-4 border-t border-white/[0.04]">
+
+      {/* User Footer */}
+      <div className="px-3 py-3 border-t border-slate-800 bg-[#090F21]">
         <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-violet-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-extrabold text-white">{initials}</span>
+          <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center flex-shrink-0 border border-blue-500/40">
+            <span className="text-xs font-bold text-white">{initials}</span>
           </div>
           {!collapsed && <>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user.username}</p>
-              <p className="text-[10px] text-slate-500 truncate">{user.role}</p>
+              <p className="text-xs font-bold text-white truncate">{user.username}</p>
+              <p className="text-[10px] text-slate-400 truncate">{user.role}</p>
             </div>
-            <button onClick={onLogout} className="text-slate-600 hover:text-red-400 transition-colors"><LogOut className="w-4 h-4" /></button>
+            <button 
+              onClick={onLogout} 
+              className="text-slate-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </>}
         </div>
       </div>
@@ -345,9 +390,14 @@ const TopBar = ({
   ];
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.04] bg-white/70 dark:bg-[#0A0F1E]/70 backdrop-blur-xl sticky top-0 z-10 flex-wrap gap-3">
+    <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B132B] sticky top-0 z-10 flex-wrap gap-3">
       <div>
-        <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">{title}</h1>
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 mb-0.5">
+          <span>SR Insurance</span>
+          <span>/</span>
+          <span className="text-blue-600 dark:text-blue-400 font-semibold">{title}</span>
+        </div>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{title}</h1>
         {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
 
@@ -356,7 +406,7 @@ const TopBar = ({
         <select
           value={selectedLob}
           onChange={e => setSelectedLob(e.target.value)}
-          className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none"
         >
           <option value="All LOB">All Lines of Business</option>
           <option value="Motor">Motor (OD + TP)</option>
@@ -369,7 +419,7 @@ const TopBar = ({
         {/* Claim TAT breach alert badge (Appendix I.2) */}
         <button
           onClick={() => onNavigate && onNavigate("claims")}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
           title="IRDAI Claim Decision TAT Monitor"
         >
           <AlertCircle className="w-3.5 h-3.5" />
@@ -379,7 +429,7 @@ const TopBar = ({
         {/* Renewal due count badge */}
         <button
           onClick={() => onNavigate && onNavigate("policies")}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
           title="Policies Due for Renewal"
         >
           <Clock className="w-3.5 h-3.5" />
@@ -388,7 +438,7 @@ const TopBar = ({
 
         {/* Agent wallet balance if agent */}
         {user?.role === "AGENT" && (
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
             <Banknote className="w-3.5 h-3.5" />
             <span>Wallet: ₹42,500</span>
           </div>
@@ -398,22 +448,22 @@ const TopBar = ({
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-white/[0.05] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors relative"
+            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors relative"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500"></span>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500"></span>
           </button>
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-72 p-3 rounded-2xl border shadow-xl z-50 bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-xs space-y-2 animate-in fade-in">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5 font-bold">
-                <span>Statutory Notifications</span>
-                <span className="text-[10px] text-blue-500 font-extrabold">3 New</span>
+            <div className="absolute right-0 mt-2 w-72 p-3 rounded-xl border shadow-xl z-50 bg-white dark:bg-[#101A33] border-slate-200 dark:border-slate-700 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 font-bold">
+                <span className="text-slate-900 dark:text-white">Statutory Notifications</span>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">3 New</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {notifications.map(n => (
-                  <div key={n.id} className="p-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] space-y-1">
-                    <p className="text-slate-700 dark:text-slate-300 text-[11px] leading-snug">{n.text}</p>
+                  <div key={n.id} className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/80 space-y-1">
+                    <p className="text-slate-800 dark:text-slate-200 text-[11px] leading-snug">{n.text}</p>
                     <span className="text-[10px] text-slate-400">{n.time}</span>
                   </div>
                 ))}
@@ -425,7 +475,7 @@ const TopBar = ({
         {/* Dark/Light mode toggle */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="p-2 rounded-xl bg-slate-100 dark:bg-white/[0.05] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+          className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           title="Toggle Dark/Light Mode"
         >
           {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -435,7 +485,7 @@ const TopBar = ({
   );
 };
 
-const cardCls = (dk: boolean) => `rounded-[20px] border ${dk ? "bg-slate-800/55 border-white/[0.07]" : "bg-white border-slate-100 shadow-sm"}`;
+const cardCls = (dk: boolean) => `rounded-xl border transition-all duration-200 ${dk ? "bg-[#101A33] border-slate-700/70 shadow-sm text-slate-100" : "bg-white border-slate-200 shadow-sm text-slate-900"}`;
 
 // ─── Landing Page ─────────────────────────────────────────────────────────────
 const insTypes = [
@@ -655,10 +705,26 @@ const AuthPage = ({ mode, onSuccess, onBack, onSwitchMode }: {
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-const DashboardPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setDarkMode: (v: boolean) => void; role: string }) => {
+const DashboardPage = ({ 
+  darkMode, 
+  setDarkMode, 
+  role,
+  onNavigate,
+  onApplyPolicy,
+  user
+}: { 
+  darkMode: boolean; 
+  setDarkMode: (v: boolean) => void; 
+  role: string;
+  onNavigate?: (p: Page) => void;
+  onApplyPolicy?: () => void;
+  user?: AuthResponse;
+}) => {
   const dk = darkMode;
   const { data: stats, loading, error, reload } = useApi(() => analyticsApi.dashboard());
   const { data: payData } = useApi(() => analyticsApi.payments());
+  const { data: policies } = useApi(() => policiesApi.getAll());
+  const { data: claims } = useApi(() => claimsApi.getAll());
 
   const monthly: { month: number; amount: number }[] = (payData as any)?.monthlyRevenue ?? [];
   const chartData = monthly.map(m => ({
@@ -666,69 +732,259 @@ const DashboardPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; set
     amount: m.amount,
   }));
 
+  const formatRupees = (val: number) => {
+    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(2)} Lakhs`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(0)}K`;
+    return `₹${val.toLocaleString()}`;
+  };
+
   const statCards = stats ? [
-    { title: "Total Customers", value: stats.totalCustomers, Icon: Users, color: "#2563EB" },
-    { title: "Active Policies", value: stats.activePolicies, Icon: FileText, color: "#22C55E" },
-    { title: "Total Claims", value: stats.totalClaims, Icon: AlertCircle, color: "#F59E0B" },
-    { title: "Pending Claims", value: stats.pendingClaims, Icon: Clock, color: "#EF4444" },
-    { title: "Total Agents", value: stats.totalAgents, Icon: UserCheck, color: "#8B5CF6" },
-    { title: "Total Surveyors", value: stats.totalSurveyors, Icon: MapPin, color: "#06B6D4" },
-    { title: "Premium Collected", value: `₹${(stats.totalPremiumCollected / 1000).toFixed(0)}K`, Icon: DollarSign, color: "#22C55E" },
-    { title: "Payments Received", value: `₹${(stats.totalPaymentsReceived / 1000).toFixed(0)}K`, Icon: CreditCard, color: "#2563EB" },
+    { title: "Total Policies", value: (stats.activePolicies + stats.expiredPolicies) || stats.activePolicies, badge: "Portfolios", Icon: FileText, color: "#2563EB" },
+    { title: "Active In-Force", value: stats.activePolicies, badge: "● Live", Icon: Shield, color: "#22C55E" },
+    { title: "Total Claims", value: stats.totalClaims, badge: "Reported", Icon: AlertCircle, color: "#3B82F6" },
+    { title: "Pending Adjudication", value: stats.pendingClaims, badge: "● TAT Watch", Icon: Clock, color: "#F59E0B" },
+    { title: "Premium Collected", value: formatRupees(stats.totalPremiumCollected || 0), badge: "Statutory GWP", Icon: DollarSign, color: "#10B981" },
+    { title: "Payments Received", value: formatRupees(stats.totalPaymentsReceived || 0), badge: "Direct Cleared", Icon: CreditCard, color: "#6366F1" },
+    { title: "Settlement Ratio", value: "98.4%", badge: "IRDAI Bench >95%", Icon: Award, color: "#06B6D4" },
+    { title: "Solvency Margin", value: "1.85x", badge: "Min Req: 1.50x", Icon: Building2, color: "#8B5CF6" },
   ] : [];
+
+  const recentPolicies = (policies || []).slice(0, 4);
+  const recentClaims = (claims || []).slice(0, 4);
 
   return (
     <div className={`min-h-screen ${dk ? "bg-[#0A0F1E] text-white" : "bg-slate-50 text-slate-900"}`}>
-      <TopBar title="Dashboard" subtitle={`Welcome back — ${role}`} darkMode={darkMode} setDarkMode={setDarkMode} />
-      <div className="p-6 space-y-5">
+      <TopBar 
+        title="Operations Dashboard" 
+        subtitle={`Enterprise Monitoring Console • Role: ${role}`} 
+        darkMode={darkMode} 
+        setDarkMode={setDarkMode}
+        onNavigate={onNavigate}
+        user={user}
+      />
+
+      <div className="p-6 space-y-6">
+        {/* Quick Actions Bar */}
+        <div className={`p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
+          dk ? "bg-[#101A33] border-slate-700/70 shadow-sm" : "bg-white border-slate-200 shadow-sm"
+        }`}>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-500">Quick Operations</span>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Directly execute core policyholder and claims workflows</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => onApplyPolicy ? onApplyPolicy() : (onNavigate && onNavigate("marketplace"))}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Apply for Policy</span>
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("claims")}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+              <span>File Claim (FNOL)</span>
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("payments")}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Pay Premium</span>
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate("quote")}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all"
+            >
+              <Calculator className="w-3.5 h-3.5 text-blue-500" />
+              <span>Instant Quote</span>
+            </button>
+          </div>
+        </div>
+
         {loading && <Spinner />}
         {error && <ErrorState msg={error} onRetry={reload} />}
+
         {!loading && !error && stats && (
           <>
+            {/* KPI Cards Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {statCards.map(card => (
-                <div key={card.title} className={`${cardCls(dk)} p-5 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200`}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs text-slate-500 font-semibold mb-1">{card.title}</p>
-                      <p className={`text-2xl font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>{card.value}</p>
+                <div key={card.title} className={`${cardCls(dk)} p-4 hover:border-blue-500/40 transition-all duration-200`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{card.title}</span>
+                    <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${card.color}18` }}>
+                      <card.Icon className="w-4 h-4" style={{ color: card.color }} />
                     </div>
-                    <div className="p-2.5 rounded-xl flex-shrink-0" style={{ background: `${card.color}20` }}>
-                      <card.Icon className="w-5 h-5" style={{ color: card.color }} />
-                    </div>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <p className={`text-xl lg:text-2xl font-bold tracking-tight font-mono ${dk ? "text-white" : "text-slate-900"}`}>{card.value}</p>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      {card.badge}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Monthly Payment Revenue Chart */}
             <div className={`${cardCls(dk)} p-6`}>
-              <h3 className={`font-extrabold mb-5 ${dk ? "text-white" : "text-slate-900"}`}>Monthly Payment Revenue (₹)</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className={`text-sm font-bold uppercase tracking-wider ${dk ? "text-white" : "text-slate-900"}`}>
+                    Monthly Premium Collections (₹ GWP)
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Reconciled statutory collections across all registered Indian lines of business</p>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                  Fiscal Year 2024-25
+                </span>
+              </div>
+
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                <ResponsiveContainer width="100%" height={230}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                     <defs>
                       <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563EB" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#2563EB" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#2563EB" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"} />
                     <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: dk ? "#1E293B" : "#fff", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, fontSize: 12 }} />
+                    <YAxis 
+                      tick={{ fill: "#64748B", fontSize: 11 }} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tickFormatter={(v) => `₹${(v/1000).toFixed(0)}K`}
+                    />
+                    <Tooltip 
+                      formatter={(val: any) => [`₹${Number(val).toLocaleString()}`, "Gross Premium"]}
+                      contentStyle={{ 
+                        background: dk ? "#101A33" : "#ffffff", 
+                        border: dk ? "1px solid rgba(255,255,255,0.12)" : "1px solid #e2e8f0", 
+                        borderRadius: 10, 
+                        fontSize: 12,
+                        color: dk ? "#f8fafc" : "#0f172a"
+                      }} 
+                    />
                     <Area type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2.5} fill="url(#g1)" name="Revenue (₹)" />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : <EmptyState msg="No payment data yet" />}
             </div>
+
+            {/* Claims & Policies Recent Management Summary */}
+            <div className="grid lg:grid-cols-2 gap-5">
+              {/* Recent Policies Table */}
+              <div className={`${cardCls(dk)} p-5 space-y-3`}>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-500" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Recent Policies Schedule</h4>
+                  </div>
+                  <button 
+                    onClick={() => onNavigate && onNavigate("policies")}
+                    className="text-xs font-semibold text-blue-500 hover:text-blue-400 flex items-center gap-1"
+                  >
+                    <span>View All</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {recentPolicies.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-6">No policies issued yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                          <th className="pb-2 font-semibold">Policy No</th>
+                          <th className="pb-2 font-semibold">Plan Name</th>
+                          <th className="pb-2 font-semibold">Premium</th>
+                          <th className="pb-2 font-semibold text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                        {recentPolicies.map((p) => (
+                          <tr key={p.policyId} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td className="py-2 font-mono text-slate-400">{p.policyNumber || `POL-${p.policyId}`}</td>
+                            <td className="py-2 text-slate-900 dark:text-white truncate max-w-[140px]">{p.policyName}</td>
+                            <td className="py-2 font-mono font-semibold text-slate-900 dark:text-white">₹{(p.premiumAmount ?? 0).toLocaleString()}</td>
+                            <td className="py-2 text-right">
+                              <Badge label={p.policyStatus || "Active"} variant={statusVariant(p.policyStatus)} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Claims Table */}
+              <div className={`${cardCls(dk)} p-5 space-y-3`}>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Recent Claims Adjudication</h4>
+                  </div>
+                  <button 
+                    onClick={() => onNavigate && onNavigate("claims")}
+                    className="text-xs font-semibold text-blue-500 hover:text-blue-400 flex items-center gap-1"
+                  >
+                    <span>View All</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {recentClaims.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-6">No claims registered yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                          <th className="pb-2 font-semibold">Claim No</th>
+                          <th className="pb-2 font-semibold">Incident Details</th>
+                          <th className="pb-2 font-semibold">Amount</th>
+                          <th className="pb-2 font-semibold text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                        {recentClaims.map((c) => (
+                          <tr key={c.claimId} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td className="py-2 font-mono text-slate-400">{c.claimNumber || `CLM-${c.claimId}`}</td>
+                            <td className="py-2 text-slate-900 dark:text-white truncate max-w-[140px]">{c.description || "Damage claim"}</td>
+                            <td className="py-2 font-mono font-semibold text-slate-900 dark:text-white">₹{(c.claimAmount ?? 0).toLocaleString()}</td>
+                            <td className="py-2 text-right">
+                              <Badge label={c.claimStatus || "Pending"} variant={statusVariant(c.claimStatus)} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Statutory Solvency & TAT Summary Badges */}
             <div className="grid md:grid-cols-3 gap-4">
               {[
-                { label: "Approved Claims", value: stats.approvedClaims, color: "#22C55E" },
-                { label: "Rejected Claims", value: stats.rejectedClaims, color: "#EF4444" },
-                { label: "Expired Policies", value: stats.expiredPolicies, color: "#F59E0B" },
+                { label: "Approved Settled Claims", value: stats.approvedClaims, color: "#10B981", desc: "TAT compliant settlements" },
+                { label: "Surveyor Investigated", value: stats.rejectedClaims + stats.approvedClaims, color: "#3B82F6", desc: "IRDAI Surveyor verified" },
+                { label: "Renewals Expiring Soon", value: stats.expiredPolicies, color: "#F59E0B", desc: "30-day grace period" },
               ].map(s => (
-                <div key={s.label} className={`${cardCls(dk)} p-5`}>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">{s.label}</p>
-                  <p className="text-3xl font-extrabold" style={{ color: s.color }}>{s.value}</p>
+                <div key={s.label} className={`${cardCls(dk)} p-4 flex items-center justify-between`}>
+                  <div>
+                    <p className="text-xs text-slate-500 font-semibold mb-0.5">{s.label}</p>
+                    <p className="text-xs text-slate-400">{s.desc}</p>
+                  </div>
+                  <p className="text-2xl font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
                 </div>
               ))}
             </div>
@@ -740,7 +996,17 @@ const DashboardPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; set
 };
 
 // ─── Policies Page ────────────────────────────────────────────────────────────
-const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setDarkMode: (v: boolean) => void; role: string }) => {
+const PoliciesPage = ({ 
+  darkMode, 
+  setDarkMode, 
+  role,
+  onApplyPolicy 
+}: { 
+  darkMode: boolean; 
+  setDarkMode: (v: boolean) => void; 
+  role: string;
+  onApplyPolicy?: () => void;
+}) => {
   const dk = darkMode;
   const { data: policies, loading, error, reload } = useApi(() => policiesApi.getAll());
   const { data: customers } = useApi(() => customersApi.getAll());
@@ -752,28 +1018,102 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
   const [confirm, setConfirm] = useState<number | null>(null);
   const [form, setForm] = useState({ policyName: "", policyType: "Motor", premiumAmount: "", duration: "12", policyStatus: "Active", startDate: "", endDate: "", coverageAmount: "", customerId: "", agentId: "" });
 
+  const currentUser = getStoredUser();
+  const isCustomer = role === "CUSTOMER";
+  const [viewMode, setViewMode] = useState<"my" | "all">(isCustomer ? "my" : "all");
+
+  // Keep page updated whenever any policy is issued
+  useEffect(() => {
+    const handleUpdate = () => { reload(); };
+    window.addEventListener("policy:created", handleUpdate);
+    window.addEventListener("policies:updated", handleUpdate);
+    return () => {
+      window.removeEventListener("policy:created", handleUpdate);
+      window.removeEventListener("policies:updated", handleUpdate);
+    };
+  }, [reload]);
+
   const canEdit = role === "ADMIN" || role === "AGENT";
 
+  const isUserPolicy = (p: Policy) => {
+    if (!currentUser) return false;
+    const uid = String(currentUser.userId).toLowerCase();
+    const cCode = String(currentUser.customerCode || currentUser.username).toLowerCase();
+    const uName = currentUser.username.toLowerCase();
+    const uEmail = currentUser.email?.toLowerCase();
+
+    const pCustId = p.customerId != null ? String(p.customerId).toLowerCase() : "";
+    const pCustObjId = p.customer?.customerId != null ? String(p.customer.customerId).toLowerCase() : "";
+    const pCustCode = p.customerCode ? p.customerCode.toLowerCase() : "";
+    const pCustObjCode = p.customer?.customerCode ? p.customer.customerCode.toLowerCase() : "";
+    const pCustName = p.customer?.name ? p.customer.name.toLowerCase() : "";
+    const pCustEmail = p.customer?.email ? p.customer.email.toLowerCase() : "";
+
+    return (
+      (pCustId && (pCustId === uid || pCustId === cCode)) ||
+      (pCustObjId && (pCustObjId === uid || pCustObjId === cCode)) ||
+      (pCustCode && (pCustCode === cCode || pCustCode === uid)) ||
+      (pCustObjCode && (pCustObjCode === cCode || pCustObjCode === uid)) ||
+      (pCustName && (pCustName === uName || pCustName === cCode)) ||
+      (uEmail && pCustEmail && pCustEmail === uEmail)
+    );
+  };
+
+  const userPoliciesCount = (policies ?? []).filter(isUserPolicy).length;
+
   const filtered = (policies ?? []).filter(p => {
+    if (isCustomer && viewMode === "my" && !isUserPolicy(p)) {
+      return false;
+    }
     const matchSearch = !search || p.policyName?.toLowerCase().includes(search.toLowerCase()) || p.policyNumber?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "All" || p.policyStatus === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const openCreate = () => { setForm({ policyName: "", policyType: "Motor", premiumAmount: "", duration: "12", policyStatus: "Active", startDate: "", endDate: "", coverageAmount: "", customerId: "", agentId: "" }); setEditing(null); setModal("create"); };
+  const openCreate = () => { 
+    setForm({ 
+      policyName: "", 
+      policyType: "Motor", 
+      premiumAmount: "", 
+      duration: "12", 
+      policyStatus: "Active", 
+      startDate: new Date().toISOString().split("T")[0], 
+      endDate: new Date(Date.now() + 365*24*60*60*1000).toISOString().split("T")[0], 
+      coverageAmount: "", 
+      customerId: isCustomer && currentUser ? String(currentUser.userId) : "", 
+      agentId: "" 
+    }); 
+    setEditing(null); 
+    setModal("create"); 
+  };
   const openEdit = (p: Policy) => { setEditing(p); setForm({ policyName: p.policyName, policyType: p.policyType, premiumAmount: String(p.premiumAmount), duration: String(p.duration), policyStatus: p.policyStatus, startDate: p.startDate ?? "", endDate: p.endDate ?? "", coverageAmount: String(p.coverageAmount ?? ""), customerId: String(p.customer?.customerId ?? ""), agentId: String(p.agent?.agentId ?? "") }); setModal("edit"); };
 
   const handleSave = async () => {
     try {
-      const payload = { policyName: form.policyName, policyType: form.policyType, premiumAmount: Number(form.premiumAmount), duration: Number(form.duration), policyStatus: form.policyStatus, startDate: form.startDate || undefined, endDate: form.endDate || undefined, coverageAmount: form.coverageAmount ? Number(form.coverageAmount) : undefined, customerId: form.customerId ? Number(form.customerId) : undefined, agentId: form.agentId ? Number(form.agentId) : undefined };
+      const custId = form.customerId ? Number(form.customerId) : (isCustomer && currentUser ? currentUser.userId : undefined);
+      const payload = { 
+        policyName: form.policyName, 
+        policyType: form.policyType, 
+        premiumAmount: Number(form.premiumAmount), 
+        duration: Number(form.duration), 
+        policyStatus: form.policyStatus, 
+        startDate: form.startDate || undefined, 
+        endDate: form.endDate || undefined, 
+        coverageAmount: form.coverageAmount ? Number(form.coverageAmount) : undefined, 
+        customerId: custId, 
+        customerCode: currentUser?.customerCode || currentUser?.username,
+        agentId: form.agentId ? Number(form.agentId) : undefined 
+      };
       if (modal === "edit" && editing) { await policiesApi.update(editing.policyId, payload); toast("Policy updated"); }
-      else { await policiesApi.create(payload); toast("Policy created"); }
-      setModal(null); reload();
+      else { await policiesApi.create(payload); toast("Policy created successfully"); }
+      setModal(null); 
+      reload();
+      window.dispatchEvent(new Event("policies:updated"));
     } catch (e) { toast(e instanceof Error ? e.message : "Save failed", "error"); }
   };
 
   const handleDelete = async (id: number) => {
-    try { await policiesApi.delete(id); toast("Policy deleted"); reload(); } catch (e) { toast(e instanceof Error ? e.message : "Delete failed", "error"); }
+    try { await policiesApi.delete(id); toast("Policy deleted"); reload(); window.dispatchEvent(new Event("policies:updated")); } catch (e) { toast(e instanceof Error ? e.message : "Delete failed", "error"); }
     setConfirm(null);
   };
 
@@ -781,24 +1121,88 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
 
   return (
     <div className={`min-h-screen ${dk ? "bg-[#0A0F1E] text-white" : "bg-slate-50 text-slate-900"}`}>
-      <TopBar title="Policy Management" subtitle="Manage all insurance policies" darkMode={darkMode} setDarkMode={setDarkMode} />
+      <TopBar title="Policy Management" subtitle={isCustomer ? `Active Policies for ${currentUser?.username || "Customer"} (${currentUser?.customerCode || `ID: ${currentUser?.userId}`})` : "Manage all insurance policies"} darkMode={darkMode} setDarkMode={setDarkMode} />
       <div className="p-6 space-y-5">
         <div className={`flex flex-wrap items-center gap-3 p-4 rounded-[20px] border ${dk ? "bg-slate-800/55 border-white/[0.07]" : "bg-white border-slate-100 shadow-sm"}`}>
           <div className="flex items-center bg-slate-700/40 rounded-xl px-3 py-2 gap-2 flex-1 min-w-[180px]">
             <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
             <input value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent text-sm text-slate-200 placeholder-slate-500 outline-none w-full" placeholder="Search policies…" />
           </div>
+
+          {isCustomer && (
+            <div className="flex gap-1.5 p-1 rounded-xl bg-slate-900/60 border border-white/5">
+              <button
+                onClick={() => setViewMode("my")}
+                className={`text-xs px-3.5 py-1.5 rounded-lg font-bold transition-all ${
+                  viewMode === "my"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                My Policies ({userPoliciesCount})
+              </button>
+              <button
+                onClick={() => setViewMode("all")}
+                className={`text-xs px-3.5 py-1.5 rounded-lg font-bold transition-all ${
+                  viewMode === "all"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                All Policies ({policies?.length ?? 0})
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-1.5 flex-wrap">
             {["All", "Active", "Expiring", "Expired", "Pending"].map(f => (
               <button key={f} onClick={() => setFilterStatus(f)} className={`text-sm px-3 py-1.5 rounded-xl font-bold transition-all ${filterStatus === f ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white hover:bg-white/[0.05]"}`}>{f}</button>
             ))}
           </div>
-          {canEdit && <button onClick={openCreate} className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all ml-auto"><Plus className="w-4 h-4" /> New Policy</button>}
+
+          <button 
+            onClick={onApplyPolicy || openCreate} 
+            className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all ml-auto shadow-md"
+          >
+            <Plus className="w-4 h-4" /> {isCustomer ? "Apply Policy" : "New Policy"}
+          </button>
         </div>
 
         {loading && <Spinner />}
         {error && <ErrorState msg={error} onRetry={reload} />}
-        {!loading && !error && filtered.length === 0 && <EmptyState msg="No policies found" />}
+        {!loading && !error && filtered.length === 0 && (
+          <div className={`${cardCls(dk)} p-8 text-center space-y-4 max-w-lg mx-auto my-6`}>
+            <div className="w-14 h-14 rounded-2xl bg-blue-600/10 text-blue-500 mx-auto flex items-center justify-center">
+              <Shield className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                {isCustomer && viewMode === "my" ? "No Active Policies Yet" : "No Policies Found"}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                {isCustomer && viewMode === "my"
+                  ? `Welcome, ${currentUser?.username || "Customer"}! You have not applied for any insurance policy yet. Click below to get instant coverage.`
+                  : "No policies match the current filter or search criteria."}
+              </p>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
+              <button
+                onClick={onApplyPolicy || openCreate}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Apply for Insurance Policy
+              </button>
+              {isCustomer && viewMode === "my" && (
+                <button
+                  onClick={() => setViewMode("all")}
+                  className="px-4 py-2.5 border border-slate-700 hover:bg-white/5 text-slate-300 rounded-xl text-xs font-bold transition-all"
+                >
+                  Browse All Plans
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {!loading && !error && filtered.length > 0 && (
           <div className="space-y-3">
             {filtered.map(p => (
@@ -809,10 +1213,20 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
                       <span className={`font-extrabold ${dk ? "text-white" : "text-slate-900"}`}>{p.policyName}</span>
                       <Badge label={p.policyStatus} variant={statusVariant(p.policyStatus)} />
                       <span className="text-xs font-mono text-slate-500">{p.policyNumber}</span>
+                      {isCustomer && isUserPolicy(p) && (
+                        <span className="text-[10px] uppercase font-black bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                          Your Policy
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-4 text-xs text-slate-500 flex-wrap">
                       <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{p.policyType}</span>
-                      {p.customer && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{p.customer.name}</span>}
+                      {p.customer && (
+                        <span className="flex items-center gap-1 font-semibold text-slate-400">
+                          <Users className="w-3 h-3 text-blue-400" />
+                          {p.customer.name} {p.customer.customerCode ? `(${p.customer.customerCode})` : ""}
+                        </span>
+                      )}
                       {p.agent && <span className="flex items-center gap-1"><UserCheck className="w-3 h-3" />{p.agent.name}</span>}
                       {p.endDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Expires {p.endDate}</span>}
                     </div>
@@ -836,7 +1250,7 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
       </div>
 
       {modal && (
-        <Modal title={modal === "create" ? "New Policy" : "Edit Policy"} onClose={() => setModal(null)}>
+        <Modal title={modal === "create" ? "New Policy Application" : "Edit Policy"} onClose={() => setModal(null)}>
           <div className="space-y-4">
             <div><label className={labelCls}>Policy Name *</label><input value={form.policyName} onChange={e => setForm(p => ({ ...p, policyName: e.target.value }))} className={inputCls} placeholder="e.g. Motor Insurance - Fortuner" /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -860,12 +1274,23 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
               <div><label className={labelCls}>Start Date</label><input value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} type="date" className={inputCls} /></div>
               <div><label className={labelCls}>End Date</label><input value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} type="date" className={inputCls} /></div>
             </div>
-            <div><label className={labelCls}>Customer</label>
-              <select value={form.customerId} onChange={e => setForm(p => ({ ...p, customerId: e.target.value }))} className={inputCls}>
-                <option value="">— Select Customer —</option>
-                {(customers ?? []).map(c => <option key={c.customerId} value={c.customerId}>{c.name} ({c.email})</option>)}
-              </select>
-            </div>
+            {isCustomer ? (
+              <div>
+                <label className={labelCls}>Policy Holder (Current Customer Account)</label>
+                <input
+                  disabled
+                  value={`${currentUser?.username || "Customer"} (${currentUser?.customerCode || `ID: ${currentUser?.userId}`})`}
+                  className={`${inputCls} opacity-80 cursor-not-allowed bg-slate-900/80`}
+                />
+              </div>
+            ) : (
+              <div><label className={labelCls}>Customer</label>
+                <select value={form.customerId} onChange={e => setForm(p => ({ ...p, customerId: e.target.value }))} className={inputCls}>
+                  <option value="">— Select Customer —</option>
+                  {(customers ?? []).map(c => <option key={c.customerId} value={c.customerId}>{c.name} ({c.email})</option>)}
+                </select>
+              </div>
+            )}
             <div><label className={labelCls}>Agent</label>
               <select value={form.agentId} onChange={e => setForm(p => ({ ...p, agentId: e.target.value }))} className={inputCls}>
                 <option value="">— Select Agent —</option>
@@ -875,7 +1300,7 @@ const PoliciesPage = ({ darkMode, setDarkMode, role }: { darkMode: boolean; setD
             {modal === "edit" && <p className="text-xs text-slate-500">Policy number is auto-generated and cannot be changed.</p>}
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-white/10 text-slate-400 hover:text-white">Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white">Save</button>
+              <button onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white">Save Policy</button>
             </div>
           </div>
         </Modal>
@@ -1483,6 +1908,8 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register" | "forgot" | "reset">("login");
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const [selectedProductForModal, setSelectedProductForModal] = useState<ProductModel | null>(null);
 
   const handleAuthSuccess = (user?: AuthResponse) => {
     if (user) { setPage("dashboard"); }
@@ -1507,24 +1934,52 @@ export default function App() {
   }
 
   const user = auth.user!;
-  const role = user.role.toUpperCase() as Role;
+  const role = (user?.role || "CUSTOMER").toUpperCase() as Role;
+
   const renderPage = () => {
     const props = { darkMode, setDarkMode };
     switch (page) {
-      case "marketplace": return <MarketplacePage {...props} onSelectProductForQuote={() => setPage("quote")} />;
-      case "quote": return <QuotePage {...props} onProceedToIssuance={() => setPage("policies")} />;
+      case "marketplace": return (
+        <MarketplacePage 
+          {...props} 
+          onSelectProductForQuote={() => setPage("quote")} 
+          onBuyNow={(prod) => {
+            setSelectedProductForModal(prod);
+            setPolicyModalOpen(true);
+          }}
+        />
+      );
+      case "quote": return (
+        <QuotePage 
+          {...props} 
+          onProceedToIssuance={(quoteData) => {
+            const prod = insuranceStore.getProducts().find(p => p.lob.toUpperCase() === quoteData.policyType.toUpperCase()) || null;
+            setSelectedProductForModal(prod);
+            setPolicyModalOpen(true);
+          }} 
+        />
+      );
       case "reinsurance": return <ReinsurancePage {...props} />;
       case "compliance": return <CompliancePage {...props} />;
-      case "policies": return <PoliciesPage {...props} role={role} />;
+      case "policies": return (
+        <PoliciesPage 
+          {...props} 
+          role={role} 
+          onApplyPolicy={() => {
+            setSelectedProductForModal(null);
+            setPolicyModalOpen(true);
+          }}
+        />
+      );
       case "claims": return <ClaimsPage {...props} role={role} />;
       case "payments": return <PaymentsPage {...props} role={role} />;
-      case "admin": return role === "ADMIN" || role === "AGENT" ? <AdminPage {...props} /> : <DashboardPage {...props} role={role} />;
-      case "agent": return role === "ADMIN" || role === "AGENT" ? <AgentPage {...props} /> : <DashboardPage {...props} role={role} />;
+      case "admin": return role === "ADMIN" || role === "AGENT" ? <AdminPage {...props} /> : <DashboardPage {...props} role={role} onNavigate={setPage} onApplyPolicy={() => { setSelectedProductForModal(null); setPolicyModalOpen(true); }} user={user} />;
+      case "agent": return role === "ADMIN" || role === "AGENT" ? <AgentPage {...props} /> : <DashboardPage {...props} role={role} onNavigate={setPage} onApplyPolicy={() => { setSelectedProductForModal(null); setPolicyModalOpen(true); }} user={user} />;
       case "surveyor": return <SurveyorPage {...props} role={role} />;
       case "analytics": return <AnalyticsPage {...props} />;
-      case "audit": return role === "ADMIN" ? <AuditPage {...props} /> : <DashboardPage {...props} role={role} />;
+      case "audit": return role === "ADMIN" ? <AuditPage {...props} /> : <DashboardPage {...props} role={role} onNavigate={setPage} onApplyPolicy={() => { setSelectedProductForModal(null); setPolicyModalOpen(true); }} user={user} />;
       case "profile": return <ProfilePage {...props} user={user} />;
-      default: return <DashboardPage {...props} role={role} />;
+      default: return <DashboardPage {...props} role={role} onNavigate={setPage} onApplyPolicy={() => { setSelectedProductForModal(null); setPolicyModalOpen(true); }} user={user} />;
     }
   };
   return (
@@ -1535,6 +1990,15 @@ export default function App() {
       </main>
       <ChatBot darkMode={darkMode} onNavigate={setPage} />
       <ToastContainer toasts={toasts} />
+      <PolicyModal
+        isOpen={policyModalOpen}
+        onClose={() => setPolicyModalOpen(false)}
+        preselectedProduct={selectedProductForModal}
+        onSuccess={(newPol) => {
+          toast(`Policy ${newPol.policyNumber} issued successfully!`);
+          setPage("policies");
+        }}
+      />
     </div>
   );
 }

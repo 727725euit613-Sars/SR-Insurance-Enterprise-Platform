@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import {
   FileText, Shield, Heart, Home, Plane, Briefcase, Plus, Search, Filter,
   Download, Calendar, AlertCircle, RefreshCw, Edit, Trash2, CheckCircle,
-  FileSpreadsheet, Lock, UserCheck, X, Check, ArrowRight, Camera
+  FileSpreadsheet, Lock, UserCheck, X, Check, ArrowRight, Camera,
+  Car, ShieldCheck
 } from "lucide-react";
 import { insuranceStore, type PolicyModel, type EndorsementModel } from "../services/insuranceStore";
 import {

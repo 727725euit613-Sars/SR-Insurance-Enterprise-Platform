@@ -20,8 +20,10 @@ import com.insurance.entity.User;
 import com.insurance.exception.DuplicateResourceException;
 import com.insurance.exception.InvalidRequestException;
 import com.insurance.exception.ResourceNotFoundException;
+import com.insurance.repository.CustomerRepository;
 import com.insurance.repository.PasswordResetTokenRepository;
 import com.insurance.repository.UserRepository;
+import com.insurance.entity.Customer;
 import com.insurance.security.JwtService;
 import com.insurance.service.AuditService;
 
@@ -41,15 +43,18 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthController {
 
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final PasswordResetTokenRepository resetTokenRepository;
     private final AuditService auditService;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder,
+    public AuthController(UserRepository userRepository, CustomerRepository customerRepository,
+            PasswordEncoder passwordEncoder,
             JwtService jwtService, PasswordResetTokenRepository resetTokenRepository,
             AuditService auditService) {
         this.userRepository = userRepository;
+        this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.resetTokenRepository = resetTokenRepository;
@@ -87,6 +92,17 @@ public class AuthController {
         // Public registration must never allow callers to assign privileged roles.
         user.setRole("CUSTOMER");
         userRepository.save(user);
+
+        // Persist Customer entity so policy relationship and access control link to this user
+        if (customerRepository.findByEmail(request.email()).isEmpty()) {
+            Customer customer = new Customer();
+            customer.setName(request.username());
+            customer.setEmail(request.email());
+            customer.setPhone("+919876500000");
+            customer.setAddress("SR Insurance Registered Customer");
+            customerRepository.save(customer);
+        }
+
         String token = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
         auditService.log("REGISTER", "User", user.getUserId(), "New user registered: " + user.getUsername());

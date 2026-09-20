@@ -1,45 +1,45 @@
 import React, { useState } from "react";
 import {
-  Car, Heart, Shield, Home, Plane, Briefcase, Star, CheckCircle,
-  Filter, ArrowRight, ShieldCheck, Zap, Info, Check, X
+  Car, Heart, Shield, Home, Plane, Briefcase,
+  CheckCircle2, Filter, ArrowRight, ShieldCheck,
+  Calculator, Check, X, Building2, Clock, Award
 } from "lucide-react";
 import { insuranceStore, type ProductModel } from "../services/insuranceStore";
 
 export const MarketplacePage = ({
   darkMode,
   onSelectProductForQuote,
+  onBuyNow,
 }: {
   darkMode: boolean;
   onSelectProductForQuote: (productName: string) => void;
+  onBuyNow?: (product: ProductModel) => void;
 }) => {
   const [filter, setFilter] = useState("All");
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const products = insuranceStore.getProducts();
   const dk = darkMode;
-  const cardCls = `rounded-[28px] border overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
-    dk ? "bg-slate-800/50 border-white/[0.07]" : "bg-white border-slate-200/80 shadow-sm"
-  }`;
 
   const filteredProducts = products.filter(
     p => filter === "All" || p.lob.toUpperCase() === filter.toUpperCase()
   );
 
   return (
-    <div className="p-6 space-y-6 font-sans">
+    <div className={`p-6 lg:p-8 space-y-6 ${dk ? "bg-[#0A0F1E] text-white" : "bg-slate-50 text-slate-900"}`}>
       {/* Category Tabs Bar */}
-      <div className={`flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl border ${
-        dk ? "bg-slate-800/40 border-white/[0.07]" : "bg-white border-slate-200/80 shadow-sm"
+      <div className={`flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-xl border ${
+        dk ? "bg-[#101A33] border-slate-700/60 shadow-sm" : "bg-white border-slate-200 shadow-sm"
       }`}>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           {["All", "Motor", "Health", "Life", "Property", "Travel", "Commercial"].map(cat => (
             <button
               key={cat}
               onClick={() => setFilter(cat)}
-              className={`text-xs px-4 py-2 rounded-xl font-extrabold transition-all ${
+              className={`text-xs px-3.5 py-2 rounded-lg font-semibold transition-all ${
                 filter === cat
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                  ? "bg-blue-600 text-white shadow-sm"
                   : dk
-                  ? "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                  ? "text-slate-300 hover:text-white hover:bg-slate-800"
                   : "text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -50,24 +50,18 @@ export const MarketplacePage = ({
 
         <button
           onClick={() => setCompareModalOpen(true)}
-          className={`flex items-center gap-2 text-xs px-4 py-2 rounded-xl font-extrabold border transition-all ${
-            dk ? "border-white/10 text-slate-300 hover:bg-white/[0.05]" : "border-slate-200 text-slate-700 hover:bg-slate-50"
+          className={`flex items-center gap-2 text-xs px-3.5 py-2 rounded-lg font-semibold border transition-all ${
+            dk ? "border-slate-700 text-slate-200 hover:bg-slate-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"
           }`}
         >
-          <Filter className="w-3.5 h-3.5 text-blue-500" /> Compare All Plans
+          <Filter className="w-3.5 h-3.5 text-blue-500" />
+          <span>Compare All Plans</span>
         </button>
       </div>
 
       {/* Product Cards Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredProducts.map(prod => {
-          const color =
-            prod.lob === "MOTOR" ? "#2563EB" :
-            prod.lob === "HEALTH" ? "#22C55E" :
-            prod.lob === "LIFE" ? "#8B5CF6" :
-            prod.lob === "PROPERTY" ? "#F59E0B" :
-            prod.lob === "TRAVEL" ? "#06B6D4" : "#4F46E5";
-
           const IconComp =
             prod.lob === "MOTOR" ? Car :
             prod.lob === "HEALTH" ? Heart :
@@ -76,63 +70,100 @@ export const MarketplacePage = ({
             prod.lob === "TRAVEL" ? Plane : Briefcase;
 
           return (
-            <div key={prod.productId} className={cardCls}>
-              {/* Card Header Gradient */}
-              <div
-                className="p-6 relative text-white"
-                style={{ background: `linear-gradient(135deg, ${color}, ${color}CC)` }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-lg">
-                    <IconComp className="w-6 h-6 text-white" />
+            <div
+              key={prod.productId}
+              className={`rounded-xl border flex flex-col justify-between transition-all duration-200 hover:shadow-md ${
+                dk
+                  ? "bg-[#101A33] border-slate-700/70 shadow-black/20"
+                  : "bg-white border-slate-200 shadow-sm"
+              }`}
+            >
+              {/* Card Header */}
+              <div className="p-5 pb-4 border-b border-slate-100 dark:border-slate-700/60">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20">
+                      <IconComp className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">
+                        {prod.lob}
+                      </span>
+                      <p className="text-[10px] font-mono text-slate-400 leading-none">
+                        UIN: {prod.irdaiUin}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-black/25 backdrop-blur-sm px-2.5 py-1 rounded-full text-white">
-                    UIN: {prod.irdaiUin.slice(0, 12)}...
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    IRDAI Approved
                   </span>
                 </div>
 
-                <h3 className="text-base font-black tracking-tight">{prod.productName}</h3>
-                <p className="text-xs text-white/80 mt-1 line-clamp-2">{prod.description}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                  {prod.productName}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                  {prod.description}
+                </p>
 
-                <div className="mt-4 pt-3 border-t border-white/20 flex justify-between items-baseline">
+                {/* Key Financial Metrics */}
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-white/70">Sum Insured Up To</span>
-                    <div className="text-xl font-black">₹{(prod.maxSumInsured / 100000).toFixed(0)} Lakhs</div>
+                    <span className="text-[10px] uppercase font-semibold text-slate-400">Sum Insured Up To</span>
+                    <div className="text-base font-bold text-slate-900 dark:text-white font-mono">
+                      ₹{(prod.maxSumInsured / 100000).toFixed(0)} Lakhs
+                    </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-white/70">Base Rate</span>
-                    <div className="text-sm font-extrabold">{prod.baseRatePct}% p.a.</div>
+                    <span className="text-[10px] uppercase font-semibold text-slate-400">Base Tariff</span>
+                    <div className="text-base font-bold text-blue-600 dark:text-blue-400 font-mono">
+                      {prod.baseRatePct}% p.a.
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card Body */}
-              <div className="p-6 space-y-4">
+              {/* Card Body - Key Benefits */}
+              <div className="p-5 pt-4 space-y-4 flex-1 flex flex-col justify-between">
                 <div className="space-y-2">
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Included Coverage</p>
-                  {prod.benefits.slice(0, 3).map((b, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                      <span className="line-clamp-1">{b}</span>
-                    </div>
-                  ))}
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Key Features &amp; Coverage
+                  </p>
+                  <div className="space-y-1.5">
+                    {prod.benefits.slice(0, 3).map((b, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        <span className="line-clamp-1">{b}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex gap-2">
-                  <button
-                    onClick={() => setCompareModalOpen(true)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                      dk ? "border-white/10 text-slate-300 hover:bg-white/5" : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    Details
-                  </button>
+                {/* Card Actions */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex gap-2">
                   <button
                     onClick={() => onSelectProductForQuote(prod.productName)}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-extrabold text-white shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-1.5"
-                    style={{ background: color }}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-colors ${
+                      dk
+                        ? "border-slate-700 text-slate-200 hover:bg-slate-800"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
                   >
-                    Buy Now →
+                    <Calculator className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Calculate Quote</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (onBuyNow) {
+                        onBuyNow(prod);
+                      } else {
+                        onSelectProductForQuote(prod.productName);
+                      }
+                    }}
+                    className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-sm transition-all flex items-center justify-center gap-1"
+                  >
+                    <span>Buy Now</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -143,34 +174,64 @@ export const MarketplacePage = ({
 
       {/* Comparison Modal */}
       {compareModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-4xl shadow-2xl p-6 max-h-[85vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-white/5">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`border rounded-xl w-full max-w-4xl shadow-2xl p-6 max-h-[85vh] overflow-y-auto space-y-4 ${
+            dk ? "bg-[#101A33] border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+          }`}>
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Insurance Plan Comparison Matrix</h3>
-                <p className="text-xs text-slate-500">Side-by-side feature and rating breakdown per IRDAI filings</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">IRDAI Plan Comparison Matrix</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Statutory comparison across major Lines of Business</p>
               </div>
-              <button onClick={() => setCompareModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+              <button 
+                onClick={() => setCompareModalOpen(false)} 
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-lg">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-white/10 text-slate-400 uppercase font-extrabold">
+                  <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase font-bold">
                     <th className="py-3 px-4">Feature / Policy Line</th>
-                    <th className="py-3 px-4 text-blue-500">Motor Car Comprehensive</th>
-                    <th className="py-3 px-4 text-emerald-500">Health Family Floater</th>
-                    <th className="py-3 px-4 text-violet-500">Smart Term Life</th>
+                    <th className="py-3 px-4 text-blue-600 dark:text-blue-400">Motor Car Comprehensive</th>
+                    <th className="py-3 px-4 text-emerald-600 dark:text-emerald-400">Health Family Floater</th>
+                    <th className="py-3 px-4 text-indigo-600 dark:text-indigo-400">Smart Term Life</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-semibold text-slate-700 dark:text-slate-200">
-                  <tr><td className="py-3 px-4 font-bold text-slate-900 dark:text-white">Max Sum Insured</td><td className="py-3 px-4">₹50 Lakhs (IDV)</td><td className="py-3 px-4">₹50 Lakhs</td><td className="py-3 px-4">₹5 Crore</td></tr>
-                  <tr><td className="py-3 px-4 font-bold text-slate-900 dark:text-white">No Claim Bonus (NCB)</td><td className="py-3 px-4">Up to 50% discount</td><td className="py-3 px-4">Cumulative bonus (10%/yr)</td><td className="py-3 px-4">N/A</td></tr>
-                  <tr><td className="py-3 px-4 font-bold text-slate-900 dark:text-white">Cashless Network</td><td className="py-3 px-4">5,000+ Authorized Garages</td><td className="py-3 px-4">10,000+ Empanelled Hospitals</td><td className="py-3 px-4">Direct Wire Settlement</td></tr>
-                  <tr><td className="py-3 px-4 font-bold text-slate-900 dark:text-white">Aadhaar eKYC Required</td><td className="py-3 px-4">✅ Yes (OTP verified)</td><td className="py-3 px-4">✅ Yes (OTP verified)</td><td className="py-3 px-4">✅ Yes (OTP verified)</td></tr>
-                  <tr><td className="py-3 px-4 font-bold text-slate-900 dark:text-white">Claim Settlement SLA</td><td className="py-3 px-4">7 Business Days</td><td className="py-3 px-4">30 Mins Pre-Auth</td><td className="py-3 px-4">24h Immediate Wire</td></tr>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-700 dark:text-slate-300 font-medium">
+                  <tr>
+                    <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">Max Sum Insured</td>
+                    <td className="py-3 px-4 font-mono">₹50 Lakhs (IDV)</td>
+                    <td className="py-3 px-4 font-mono">₹50 Lakhs</td>
+                    <td className="py-3 px-4 font-mono">₹5 Crore</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">No Claim Bonus (NCB)</td>
+                    <td className="py-3 px-4">Up to 50% discount</td>
+                    <td className="py-3 px-4">Cumulative bonus (10%/yr)</td>
+                    <td className="py-3 px-4">N/A</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">Cashless Network</td>
+                    <td className="py-3 px-4">5,000+ Authorized Garages</td>
+                    <td className="py-3 px-4">10,000+ Empanelled Hospitals</td>
+                    <td className="py-3 px-4">Direct Wire Settlement</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">Aadhaar eKYC Required</td>
+                    <td className="py-3 px-4">Yes (UIDAI OTP verified)</td>
+                    <td className="py-3 px-4">Yes (UIDAI OTP verified)</td>
+                    <td className="py-3 px-4">Yes (UIDAI OTP verified)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">Claim Settlement SLA</td>
+                    <td className="py-3 px-4">7 Business Days</td>
+                    <td className="py-3 px-4">30 Mins Pre-Authorization</td>
+                    <td className="py-3 px-4">24h Immediate Settlement</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -178,7 +239,7 @@ export const MarketplacePage = ({
             <div className="pt-2 text-right">
               <button
                 onClick={() => setCompareModalOpen(false)}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-extrabold shadow-md"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-sm"
               >
                 Close Comparison
               </button>

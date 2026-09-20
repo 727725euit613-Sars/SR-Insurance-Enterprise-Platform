@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Car, Heart, Shield, Home, Plane, Briefcase, CheckCircle, ChevronLeft,
   ChevronRight, Download, ArrowRight, Zap, Check, FileText, Sparkles, Percent
 } from "lucide-react";
 import { insuranceStore } from "../services/insuranceStore";
+import { getStoredUser } from "../services/api";
 import { openPrintableDocument } from "../utils/documentGenerator";
 
 const insTypes = [
@@ -41,9 +42,19 @@ export const QuotePage = ({
   ]);
   const [vehicleNo, setVehicleNo] = useState("KA-01-MN-5678");
   const [vehicleMake, setVehicleMake] = useState("Toyota Fortuner 4x4 (Diesel)");
-  const [customerName, setCustomerName] = useState("Arjun Mehta");
+  const [customerName, setCustomerName] = useState(() => {
+    const user = getStoredUser();
+    return user?.username || "Arjun Mehta";
+  });
   const [customerPhone, setCustomerPhone] = useState("+91 98765 43210");
   const [selectedPlanTier, setSelectedPlanTier] = useState<"Essential" | "Standard" | "Elite">("Standard");
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user?.username) {
+      setCustomerName(user.username);
+    }
+  }, []);
 
   const dk = darkMode;
   const panelCls = `rounded-[28px] p-6 sm:p-8 border ${
